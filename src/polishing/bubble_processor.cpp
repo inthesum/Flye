@@ -20,14 +20,15 @@ namespace
 
 BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
 								 const std::string& hopoMatrixPath,
-								 bool showProgress):
+								 bool showProgress, bool hopoEnabled):
 	_subsMatrix(subsMatPath),
 	_hopoMatrix(hopoMatrixPath),
 	_generalPolisher(_subsMatrix),
 	_homoPolisher(_subsMatrix, _hopoMatrix),
 	_dinucFixer(_subsMatrix),
 	_verbose(false),
-	_showProgress(showProgress)
+	_showProgress(showProgress),
+	_hopoEnabled(hopoEnabled)
 {
 }
 
@@ -96,7 +97,10 @@ void BubbleProcessor::parallelWorker()
 		{
 			_stateMutex.unlock();
 			_generalPolisher.polishBubble(bubble);
-			//_homoPolisher.polishBubble(bubble);
+			if (_hopoEnabled)
+			{
+				_homoPolisher.polishBubble(bubble);
+			}
 			_dinucFixer.fixBubble(bubble);
 			_stateMutex.lock();
 		}
@@ -112,7 +116,7 @@ void BubbleProcessor::writeBubbles(const std::vector<Bubble>& bubbles)
 	for (auto& bubble : bubbles)
 	{
 		_consensusFile << ">" << bubble.header << " " << bubble.position
-			 		   << " " << bubble.branches.size() << std::endl
+			 		   << " " << bubble.branches.size() << " " << bubble.subPosition << std::endl
 			 		   << bubble.candidate << std::endl;
 	}
 }
@@ -161,7 +165,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
 		if (buffer.empty()) break;
 
 		std::vector<std::string> elems = splitString(buffer, ' ');
-		if (elems.size() < 3 || elems[0][0] != '>')
+		if (elems.size() != 4 || elems[0][0] != '>')
 		{
 			throw std::runtime_error("Error parsing bubbles file");
 		}
@@ -174,6 +178,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
 		bubble.header = elems[0].substr(1, std::string::npos);
 		bubble.position = std::stoi(elems[1]);
 		int numOfReads = std::stoi(elems[2]);
+		bubble.subPosition = std::stoi(elems[3]);
 
 		int count = 0;
 		while (count < numOfReads) 
@@ -189,6 +194,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
 		}
 		if (count != numOfReads)
 		{
+			//std::cerr << buffer << " " << count << " " << numOfReads << std::endl;
 			throw std::runtime_error("Error parsing bubbles file");
 		}
 

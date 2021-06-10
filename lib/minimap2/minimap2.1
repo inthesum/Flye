@@ -1,4 +1,4 @@
-.TH minimap2 1 "4 May 2019" "minimap2-2.17 (r941)" "Bioinformatics tools"
+.TH minimap2 1 "9 April 2021" "minimap2-2.18 (r1015)" "Bioinformatics tools"
 .SH NAME
 .PP
 minimap2 - mapping and alignment between collections of DNA sequences
@@ -121,6 +121,14 @@ provided as the target sequences, options
 .BR -w ,
 .B -I
 will be effectively overridden by the options stored in the index file.
+.TP
+.BI --alt \ FILE
+List of ALT contigs [null]
+.TP
+.BI --alt-drop \ FLOAT
+Drop ALT hits by
+.I FLOAT
+fraction when ranking and computing mapping quality [0.15]
 .SS Mapping options
 .TP 10
 .BI -f \ FLOAT | INT1 [, INT2 ]
@@ -229,7 +237,14 @@ or more of the shorter chain [0.5]
 .B --hard-mask-level
 Honor option
 .B -M
-and disable a heurstic to save unmapped subsequences.
+and disable a heurstic to save unmapped subsequences and disables
+.BR --mask-len .
+.TP
+.BI --mask-len \ NUM
+Keep an alignment if dropping it leaves an unaligned region on query longer than
+.IR INT
+[inf]. Effective without
+.BR --hard-mask-level .
 .TP
 .BI --max-chain-skip \ INT
 A heuristics that stops chaining early [25]. Minimap2 uses dynamic programming
@@ -244,6 +259,9 @@ Check up to
 .I INT
 partial chains during chaining [5000]. This is a heuristic to avoid quadratic
 time complexity in the worst case.
+.TP
+.BI --chain-gap-scale \ FLOAT
+Scale of gap cost during chaining [1.0]
 .TP
 .B --no-long-join
 Disable the long gap patching heuristic. When this option is applied, the
@@ -373,7 +391,7 @@ BED12 file can be converted from GTF/GFF3 with `paftools.js gff2bed anno.gtf'
 .BR --junc-bonus \ INT
 Score bonus for a splice donor or acceptor found in annotation (effective with
 .BR --junc-bed )
-[0].
+[9].
 .TP
 .BI --end-seed-pen \ INT
 Drop a terminal anchor if
@@ -638,6 +656,7 @@ s2	i	Chaining score of the best secondary chain
 NM	i	Total number of mismatches and gaps in the alignment
 MD	Z	To generate the ref sequence in the alignment
 AS	i	DP alignment score
+SA	Z	List of other supplementary alignments
 ms	i	DP score of the max scoring segment in the alignment
 nn	i	Number of ambiguous bases in the alignment
 ts	A	Transcript strand (splice mode only)

@@ -245,10 +245,10 @@ void HopoMatrix::loadMatrix(const std::string& fileName)
 	}
 
 	std::vector<size_t> nucleotideFreq(5, 0);
-	std::vector<std::vector<int>> observationsFreq;
+	std::vector<std::vector<size_t>> observationsFreq;
 	for (size_t i = 0; i < NUM_HOPO_STATES; ++i)
 	{
-		observationsFreq.push_back(std::vector<int>(NUM_HOPO_OBS, 0));
+		observationsFreq.push_back(std::vector<size_t>(NUM_HOPO_OBS, 0));
 	}
 
 	while (std::getline(fin, buffer))
@@ -263,8 +263,8 @@ void HopoMatrix::loadMatrix(const std::string& fileName)
 		{
 			auto obsTokens = splitString(tokens[i], '=');
 			Observation obs = strToObs(state.nucl, expandHopo(obsTokens[0]));
-			observationsFreq[state.id][obs.id] += std::stoi(obsTokens[1]);
-			nucleotideFreq[dnaToId(state.nucl)] += std::stoi(obsTokens[1]);
+			observationsFreq[state.id][obs.id] += std::stoull(obsTokens[1]);
+			nucleotideFreq[dnaToId(state.nucl)] += std::stoull(obsTokens[1]);
 		}
 	}
 
@@ -274,7 +274,7 @@ void HopoMatrix::loadMatrix(const std::string& fileName)
 		for (size_t runLen = MIN_HOPO; runLen <= MAX_HOPO; ++runLen)
 		{
 			State state(nucl, runLen);
-			int sumFreq = 0;
+			size_t sumFreq = 0;
 			for (size_t j = 0; j < NUM_HOPO_OBS; ++j)
 			{
 				sumFreq += observationsFreq[state.id][j];

@@ -187,7 +187,7 @@ def resolve_each_repeat(rep_id, repeat_edges, all_edge_headers, args,
             os.mkdir(pol_temp_dir)
         polished_template, _ = \
             pol.polish(template, [repeat_reads], pol_temp_dir, NUM_POL_ITERS,
-                       num_threads, args.platform, output_progress=False)
+                       num_threads, args.platform, args.read_type, output_progress=False)
 
         if not os.path.getsize(polished_template):
             for side in side_labels:
@@ -202,7 +202,7 @@ def resolve_each_repeat(rep_id, repeat_edges, all_edge_headers, args,
                 pol_output, _ = \
                     pol.polish(extended.format(side, edge_id), [repeat_reads],
                                pol_ext_dir.format(side, edge_id), NUM_POL_ITERS,
-                               num_threads, args.platform,
+                               num_threads, args.platform, args.read_type,
                                output_progress=False)
                 polished_extended[(side, edge_id)] = pol_output
                 if not os.path.getsize(pol_output):
@@ -318,7 +318,7 @@ def resolve_each_repeat(rep_id, repeat_edges, all_edge_headers, args,
                         os.mkdir(pol_con_dir)
                     pol_con_out, _ = \
                         pol.polish(curr_extended, [curr_reads], pol_con_dir,
-                                   NUM_POL_ITERS, num_threads, args.platform,
+                                   NUM_POL_ITERS, num_threads, args.platform, args.read_type,
                                    output_progress=False)
                     #7b. Cut consensus where coverage drops
                     cutpoint = locate_consensus_cutpoint(
@@ -1147,15 +1147,14 @@ def partition_reads(edges, it, side, position_path, cons_align_path,
 
 def _read_alignment(alignment, target_path, min_aln_rate):
     alignments = []
-    aln_reader = SynchronizedSamReader(alignment,
-                                       fp.read_sequence_dict(target_path),
+    fasta_dict = fp.read_sequence_dict(target_path)
+    aln_reader = SynchronizedSamReader(alignment, fasta_dict,
                                        config.vals["max_read_coverage"])
-    while not aln_reader.is_eof():
-        ctg_id, ctg_aln = aln_reader.get_chunk()
-        if ctg_id is None:
-            break
+    for ctg_id in fasta_dict:
+        ctg_aln = aln_reader.get_alignments(ctg_id)
+        if len(ctg_aln) == 0:
+            continue
         alignments.append(ctg_aln)
-    aln_reader.close()
 
     return alignments
 
@@ -1266,7 +1265,7 @@ def _collapse(aln_one, aln_two):
                             out_qry_end, aln_one.qry_sign, aln_one.qry_len,
                             aln_one.trg_start, out_trg_end, aln_one.trg_sign,
                             aln_one.trg_len, out_qry_seq, out_trg_seq,
-                            out_err_rate, is_secondary=False)
+                            out_err_rate, is_secondary=False, is_supplementary=False, map_qv=0)
         return out_aln
     elif (aln_two.qry_start <= aln_one.qry_start and
             aln_two.trg_start <= aln_one.trg_start):
@@ -1297,7 +1296,7 @@ def _collapse(aln_one, aln_two):
                             out_qry_end, aln_one.qry_sign, aln_one.qry_len,
                             aln_two.trg_start, out_trg_end, aln_one.trg_sign,
                             aln_one.trg_len, out_qry_seq, out_trg_seq,
-                            out_err_rate, is_secondary=False)
+                            out_err_rate, is_secondary=False, is_supplementary=False, map_qv=0)
         return out_aln
     return out_aln
 

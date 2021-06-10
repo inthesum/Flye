@@ -79,11 +79,11 @@ static char *mm_escape(char *s)
 	return s;
 }
 
-static void sam_write_rg_line(kstring_t *str, const char *s)
+static int sam_write_rg_line(kstring_t *str, const char *s)
 {
 	char *p, *q, *r, *rg_line = 0;
 	memset(mm_rg_id, 0, 256);
-	if (s == 0) return;
+	if (s == 0) return 0;
 	if (strstr(s, "@RG") != s) {
 		if (mm_verbose >= 1) fprintf(stderr, "[ERROR] the read group line is not started with @RG\n");
 		goto err_set_rg;
@@ -108,20 +108,23 @@ static void sam_write_rg_line(kstring_t *str, const char *s)
 	for (q = p, r = mm_rg_id; *q && *q != '\t' && *q != '\n'; ++q)
 		*r++ = *q;
 	mm_sprintf_lite(str, "%s\n", rg_line);
+	return 0;
 
 err_set_rg:
 	free(rg_line);
+	return -1;
 }
 
-void mm_write_sam_hdr(const mm_idx_t *idx, const char *rg, const char *ver, int argc, char *argv[])
+int mm_write_sam_hdr(const mm_idx_t *idx, const char *rg, const char *ver, int argc, char *argv[])
 {
 	kstring_t str = {0,0,0};
+	int ret = 0;
 	if (idx) {
 		uint32_t i;
 		for (i = 0; i < idx->n_seq; ++i)
 			mm_sprintf_lite(&str, "@SQ\tSN:%s\tLN:%d\n", idx->seq[i].name, idx->seq[i].len);
 	}
-	if (rg) sam_write_rg_line(&str, rg);
+	if (rg) ret = sam_write_rg_line(&str, rg);
 	mm_sprintf_lite(&str, "@PG\tID:minimap2\tPN:minimap2");
 	if (ver) mm_sprintf_lite(&str, "\tVN:%s", ver);
 	if (argc > 1) {
@@ -132,6 +135,7 @@ void mm_write_sam_hdr(const mm_idx_t *idx, const char *rg, const char *ver, int 
 	}
 	mm_err_puts(str.s);
 	free(str.s);
+	return ret;
 }
 
 static void write_cs_core(kstring_t *s, const uint8_t *tseq, const uint8_t *qseq, const mm_reg1_t *r, char *tmp, int no_iden, int write_tag)
@@ -270,7 +274,7 @@ double mm_event_identity(const mm_reg1_t *r)
 		if (op == 1 || op == 2)
 			++n_gapo, n_gap += len;
 	}
-	return (double)r->mlen / (r->blen - n_gap + n_gapo);
+	return (double)r->mlen / (r->blen + r->p->n_ambi - n_gap + n_gapo);
 }
 
 static inline void write_tags(kstring_t *s, const mm_reg1_t *r)
@@ -367,7 +371,6 @@ static void write_sam_cigar(kstring_t *s, int sam_flag, int in_tag, int qlen, co
 		clip_len[0] = r->rev? qlen - r->qe : r->qs;
 		clip_len[1] = r->rev? r->qs : qlen - r->qe;
 		if (in_tag) {
-			//int clip_char = (sam_flag&0x800) && !(opt_flag&MM_F_SOFTCLIP)? 5 : 4;
 			int clip_char = ((sam_flag&0x800 || (sam_flag&0x100 && opt_flag&MM_F_SECONDARY_SEQ)) &&
 							 !(opt_flag&MM_F_SOFTCLIP)) ? 5 : 4;
 			mm_sprintf_lite(s, "\tCG:B:I");
@@ -376,7 +379,6 @@ static void write_sam_cigar(kstring_t *s, int sam_flag, int in_tag, int qlen, co
 				mm_sprintf_lite(s, ",%u", r->p->cigar[k]);
 			if (clip_len[1]) mm_sprintf_lite(s, ",%u", clip_len[1]<<4|clip_char);
 		} else {
-			//int clip_char = (sam_flag&0x800) && !(opt_flag&MM_F_SOFTCLIP)? 'H' : 'S';
 			int clip_char = ((sam_flag&0x800 || (sam_flag&0x100 && opt_flag&MM_F_SECONDARY_SEQ)) &&
 							 !(opt_flag&MM_F_SOFTCLIP)) ? 'H' : 'S';
 			assert(clip_len[0] < qlen && clip_len[1] < qlen);
@@ -392,7 +394,7 @@ void mm_write_sam3(kstring_t *s, const mm_idx_t *mi, const mm_bseq1_t *t, int se
 {
 	const int max_bam_cigar_op = 65535;
 	int flag, n_regs = n_regss[seg_idx], cigar_in_tag = 0;
-	int this_rid = -1, this_pos = -1, this_rev = 0;
+	int this_rid = -1, this_pos = -1;
 	const mm_reg1_t *regs = regss[seg_idx], *r_prev = NULL, *r_next;
 	const mm_reg1_t *r = n_regs > 0 && reg_idx < n_regs && reg_idx >= 0? &regs[reg_idx] : NULL;
 
@@ -441,7 +443,7 @@ void mm_write_sam3(kstring_t *s, const mm_idx_t *mi, const mm_bseq1_t *t, int se
 			mm_sprintf_lite(s, "\t%s\t%d\t0\t*", mi->seq[this_rid].name, this_pos+1);
 		} else mm_sprintf_lite(s, "\t*\t0\t0\t*");
 	} else {
-		this_rid = r->rid, this_pos = r->rs, this_rev = r->rev;
+		this_rid = r->rid, this_pos = r->rs;
 		mm_sprintf_lite(s, "\t%s\t%d\t%d\t", mi->seq[r->rid].name, r->rs+1, r->mapq);
 		if ((opt_flag & MM_F_LONG_CIGAR) && r->p && r->p->n_cigar > max_bam_cigar_op - 2) {
 			int n_cigar = r->p->n_cigar;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <limits.h>
 #include "mmpriv.h"
 
 void mm_idxopt_init(mm_idxopt_t *opt)
@@ -24,8 +25,10 @@ void mm_mapopt_init(mm_mapopt_t *opt)
 	opt->max_gap_ref = -1;
 	opt->max_chain_skip = 25;
 	opt->max_chain_iter = 5000;
+	opt->chain_gap_scale = 1.0f;
 
 	opt->mask_level = 0.5f;
+	opt->mask_len = INT_MAX;
 	opt->pri_ratio = 0.8f;
 	opt->best_n = 5;
 
@@ -33,6 +36,8 @@ void mm_mapopt_init(mm_mapopt_t *opt)
 	opt->max_join_short = 2000;
 	opt->min_join_flank_sc = 1000;
 	opt->min_join_flank_ratio = 0.5f;
+
+	opt->alt_drop = 0.15f;
 
 	opt->a = 2, opt->b = 4, opt->q = 4, opt->e = 2, opt->q2 = 24, opt->e2 = 1;
 	opt->sc_ambi = 1;

@@ -171,6 +171,8 @@ namespace
 //processes a single bubble
 void HomoPolisher::polishBubble(Bubble& bubble) const
 {
+	const size_t MAX_HOPO = 20;
+
 	std::string prevCandidate;
 	std::string curCandidate = bubble.candidate;
 
@@ -203,7 +205,7 @@ void HomoPolisher::polishBubble(Bubble& bubble) const
 	for (size_t i = 0; i < states.size(); ++i)
 	{
 		size_t length = states[i].length;
-		if (length > 1)	//only homopolymers
+		if (length > 1 && length <= MAX_HOPO)	//only homopolymers
 		{
 			length = this->mostLikelyLen(states[i].nucl, observations[i]);
 		}

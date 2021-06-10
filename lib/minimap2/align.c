@@ -38,8 +38,8 @@ static inline void update_max_zdrop(int32_t score, int i, int j, int32_t *max, i
 		int z = *max - score - diff * e;
 		if (z > *max_zdrop) {
 			*max_zdrop = z;
-			pos[0][0] = *max_i, pos[0][1] = i + 1;
-			pos[1][0] = *max_j, pos[1][1] = j + 1;
+			pos[0][0] = *max_i, pos[0][1] = i;
+			pos[1][0] = *max_j, pos[1][1] = j;
 		}
 	} else *max = score, *max_i = i, *max_j = j;
 }
@@ -739,6 +739,13 @@ static void mm_align1(void *km, const mm_mapopt_t *opt, const mm_idx_t *mi, int 
 			if (ez->n_cigar > 0)
 				mm_append_cigar(r, ez->n_cigar, ez->cigar);
 			if (ez->zdropped) { // truncated by Z-drop; TODO: sometimes Z-drop kicks in because the next seed placement is wrong. This can be fixed in principle.
+				if (!r->p) {
+					assert(ez->n_cigar == 0);
+					uint32_t capacity = sizeof(mm_extra_t)/4;
+					kroundup32(capacity);
+					r->p = (mm_extra_t*)calloc(capacity, 4);
+					r->p->capacity = capacity;
+				}
 				for (j = i - 1; j >= 0; --j)
 					if ((int32_t)a[as1 + j].x <= rs + ez->max_t)
 						break;
@@ -908,6 +915,6 @@ mm_reg1_t *mm_align_skeleton(void *km, const mm_mapopt_t *opt, const mm_idx_t *m
 	kfree(km, qseq0[0]);
 	kfree(km, ez.cigar);
 	mm_filter_regs(opt, qlen, n_regs_, regs);
-	mm_hit_sort(km, n_regs_, regs);
+	mm_hit_sort(km, n_regs_, regs, opt->alt_drop);
 	return regs;
 }

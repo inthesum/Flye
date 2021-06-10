@@ -11,15 +11,16 @@ from __future__ import division
 import logging
 from bisect import bisect
 from flye.six.moves import range
+from collections import defaultdict
 
 import multiprocessing
 import traceback
-import signal
 
 import flye.utils.fasta_parser as fp
 import flye.config.py_cfg as cfg
 from flye.polishing.alignment import shift_gaps, get_uniform_alignments
-from flye.utils.sam_parser import SynchronizedSamReader
+from flye.utils.sam_parser import SynchronizedSamReader, SynchonizedChunkManager
+from flye.utils.utils import process_in_parallel, get_median
 from flye.six.moves import zip
 
 
@@ -39,44 +40,58 @@ class ProfileInfo(object):
 
 
 class Bubble(object):
-    __slots__ = ("contig_id", "position", "branches", "consensus")
+    __slots__ = ("contig_id", "position", "sub_position", "branches", "consensus")
 
     def __init__(self, contig_id, position):
         self.contig_id = contig_id
         self.position = position
+        self.sub_position = 0
         self.branches = []
         self.consensus = ""
 
 
-def _thread_worker(aln_reader, contigs_info, err_mode,
+def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
                    results_queue, error_queue, bubbles_file_handle,
                    bubbles_file_lock):
     """
     Will run in parallel
     """
     try:
-        while not aln_reader.is_eof():
-            ctg_id, ctg_aln = aln_reader.get_chunk()
-            if ctg_id is None:
+        while True:
+            ctg_region = chunk_feeder.get_chunk()
+            if ctg_region is None:
                 break
+            ctg_aln = aln_reader.get_alignments(ctg_region.ctg_id, ctg_region.start,
+                                                ctg_region.end)
+            ctg_id = ctg_region.ctg_id
+            if len(ctg_aln) == 0:
+                continue
+            ref_seq = aln_reader.get_region_sequence(ctg_region.ctg_id, ctg_region.start,
+                                                     ctg_region.end)
 
-            #logger.debug("Processing {0}".format(ctg_id))
-            #get top unifom alignments
-            ctg_aln = get_uniform_alignments(ctg_aln, contigs_info[ctg_id].length)
+            #since we are working with contig chunks, tranform alignment coorinates
+            ctg_aln = aln_reader.trim_and_transpose(ctg_aln, ctg_region.start, ctg_region.end)
 
-            profile, aln_errors = _compute_profile(ctg_aln, err_mode,
-                                                   contigs_info[ctg_id].length)
+            ctg_aln = get_uniform_alignments(ctg_aln)
+            profile, aln_errors = _compute_profile(ctg_aln, ref_seq)
             partition, num_long_bubbles = _get_partition(profile, err_mode)
-            ctg_bubbles = _get_bubble_seqs(ctg_aln, err_mode, profile, partition,
-                                           contigs_info[ctg_id])
-            mean_cov = sum([len(b.branches) for b in ctg_bubbles]) // (len(ctg_bubbles) + 1)
-            ctg_bubbles, num_empty, num_long_branch = \
-                                    _postprocess_bubbles(ctg_bubbles)
+            ctg_bubbles = _get_bubble_seqs(ctg_aln, profile, partition, ctg_id)
+
+            mean_cov = aln_reader.get_median_depth(ctg_region.ctg_id, ctg_region.start,
+                                                   ctg_region.end)
+
+            ctg_bubbles, num_empty = _postprocess_bubbles(ctg_bubbles)
+            ctg_bubbles, num_long_branch = _split_long_bubbles(ctg_bubbles)
+
+            #transform coordinates back
+            for b in ctg_bubbles:
+                b.position += ctg_region.start
+
+            with bubbles_file_lock:
+                _output_bubbles(ctg_bubbles, bubbles_file_handle)
             results_queue.put((ctg_id, len(ctg_bubbles), num_long_bubbles,
                                num_empty, num_long_branch, aln_errors,
                                mean_cov))
-            with bubbles_file_lock:
-                _output_bubbles(ctg_bubbles, bubbles_file_handle)
 
             del profile
             del ctg_bubbles
@@ -92,52 +107,31 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
     """
     The main function: takes an alignment and returns bubbles
     """
-    aln_reader = SynchronizedSamReader(alignment_path,
-                                       fp.read_sequence_dict(contigs_path),
-                                       cfg.vals["max_read_coverage"],
-                                       use_secondary=True)
+    CHUNK_SIZE = 1000000
+
+    contigs_fasta = fp.read_sequence_dict(contigs_path)
+    aln_reader = SynchronizedSamReader(alignment_path, contigs_fasta,
+                                       cfg.vals["max_read_coverage"], use_secondary=True)
+    chunk_feeder = SynchonizedChunkManager(contigs_fasta, chunk_size=CHUNK_SIZE)
+
     manager = multiprocessing.Manager()
     results_queue = manager.Queue()
     error_queue = manager.Queue()
-
-    #making sure the main process catches SIGINT
-    orig_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    threads = []
     bubbles_out_lock = multiprocessing.Lock()
     bubbles_out_handle = open(bubbles_out, "w")
-    for _ in range(num_proc):
-        threads.append(multiprocessing.Process(target=_thread_worker,
-                                               args=(aln_reader, contigs_info,
-                                                     err_mode, results_queue,
-                                                     error_queue, bubbles_out_handle,
-                                                     bubbles_out_lock)))
-    signal.signal(signal.SIGINT, orig_sigint)
 
-    for t in threads:
-        t.start()
-    try:
-        for t in threads:
-            t.join()
-            if t.exitcode == -9:
-                logger.error("Looks like the system ran out of memory")
-            if t.exitcode != 0:
-                raise Exception("One of the processes exited with code: {0}"
-                                .format(t.exitcode))
-    except KeyboardInterrupt:
-        for t in threads:
-            t.terminate()
-        raise
-
+    process_in_parallel(_thread_worker, (aln_reader, chunk_feeder, contigs_info, err_mode,
+                         results_queue, error_queue, bubbles_out_handle, bubbles_out_lock), num_proc)
     if not error_queue.empty():
         raise error_queue.get()
-    aln_reader.close()
 
+    #logging
     total_bubbles = 0
     total_long_bubbles = 0
     total_long_branches = 0
     total_empty = 0
     total_aln_errors = []
-    coverage_stats = {}
+    coverage_stats = defaultdict(list)
 
     while not results_queue.empty():
         (ctg_id, num_bubbles, num_long_bubbles,
@@ -148,13 +142,17 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
         total_empty += num_empty
         total_aln_errors.extend(aln_errors)
         total_bubbles += num_bubbles
-        coverage_stats[ctg_id] = mean_coverage
+        coverage_stats[ctg_id].append(mean_coverage)
+
+    for ctg in coverage_stats:
+        coverage_stats[ctg] = int(sum(coverage_stats[ctg]) / len(coverage_stats[ctg]))
 
     mean_aln_error = sum(total_aln_errors) / (len(total_aln_errors) + 1)
     logger.debug("Generated %d bubbles", total_bubbles)
     logger.debug("Split %d long bubbles", total_long_bubbles)
     logger.debug("Skipped %d empty bubbles", total_empty)
     logger.debug("Skipped %d bubbles with long branches", total_long_branches)
+    ###
 
     return coverage_stats, mean_aln_error
 
@@ -164,9 +162,12 @@ def _output_bubbles(bubbles, out_stream):
     Outputs list of bubbles into file
     """
     for bubble in bubbles:
-        out_stream.write(">{0} {1} {2}\n".format(bubble.contig_id,
-                                        bubble.position,
-                                        len(bubble.branches)))
+        if len(bubble.branches) == 0:
+            raise Exception("No branches in a bubble")
+        out_stream.write(">{0} {1} {2} {3}\n".format(bubble.contig_id,
+                                                     bubble.position,
+                                                     len(bubble.branches),
+                                                     bubble.sub_position))
         out_stream.write(bubble.consensus + "\n")
         for branch_id, branch in enumerate(bubble.branches):
             out_stream.write(">{0}\n".format(branch_id))
@@ -175,49 +176,85 @@ def _output_bubbles(bubbles, out_stream):
     out_stream.flush()
 
 
+def _split_long_bubbles(bubbles):
+    MAX_BUBBLE = cfg.vals["max_bubble_length"]
+    #MAX_BUBBLE = 50
+    #MAX_BRANCH = MAX_BUBBLE * 1.5
+    new_bubbles = []
+    long_branches = 0
+
+    for bubble in bubbles:
+        median_branch = sorted(bubble.branches, key=len)[len(bubble.branches) // 2]
+        num_chunks = len(median_branch) // MAX_BUBBLE
+        #if len(median_branch) > MAX_BRANCH:
+        if num_chunks > 1:
+            #logger.debug("Splitting: pos:{0} len:{1}".format(bubble.position, len(median_branch)))
+            long_branches += 1
+
+            for part_num in range(num_chunks):
+                new_branches = []
+                for b in bubble.branches:
+                    chunk_len = len(b) // num_chunks
+                    start = part_num * chunk_len
+                    end = (part_num + 1) * chunk_len if part_num != num_chunks - 1 else len(b)
+                    new_branches.append(b[start:end])
+
+                new_bubbles.append(Bubble(bubble.contig_id, bubble.position))
+                new_bubbles[-1].consensus = new_branches[0]
+                new_bubbles[-1].branches = new_branches
+                new_bubbles[-1].sub_position = part_num
+
+        else:
+            new_bubbles.append(bubble)
+
+    return new_bubbles, long_branches
+
+
 def _postprocess_bubbles(bubbles):
     MAX_BUBBLE = cfg.vals["max_bubble_length"]
     MAX_BRANCHES = cfg.vals["max_bubble_branches"]
 
     new_bubbles = []
-    long_branches = 0
     empty_bubbles = 0
     for bubble in bubbles:
         if len(bubble.branches) == 0:
-            #logger.debug("Empty bubble {0}".format(bubble.position))
             empty_bubbles += 1
             continue
 
-        new_branches = []
-        median_branch = (sorted(bubble.branches, key=len)[len(bubble.branches) // 2])
+        median_branch = sorted(bubble.branches, key=len)[len(bubble.branches) // 2]
         if len(median_branch) == 0:
+            #logger.debug("Median branch with zero length: {0}".format(bubble.position))
+            empty_bubbles += 1
             continue
 
-        #Bubble is TOO BIIG, will not correct it (maybe at the next iteration)
-        if len(median_branch) > MAX_BUBBLE * 1.5:
-            new_branches = [median_branch]
-            long_branches += 1
+        #only take branches that are not significantly differ in length from the median
+        new_branches = []
+        for branch in bubble.branches:
+            incons_rate = abs(len(branch) - len(median_branch)) / len(median_branch)
+            if incons_rate < 0.5 and len(branch) > 0:
+                new_branches.append(branch)
 
-        else:
-            for branch in bubble.branches:
-                incons_rate = abs(len(branch) - len(median_branch)) / len(median_branch)
-                if incons_rate < 0.5:
-                    if len(branch) == 0:
-                        branch = "A"
-                        #logger.debug("Zero branch")
-                    new_branches.append(branch)
+        #checking again (since we might have tossed some branches)
+        if len(bubble.branches) == 0:
+            empty_bubbles += 1
+            continue
 
-        if (abs(len(median_branch) - len(bubble.consensus)) > len(median_branch) // 2):
+        #if bubble consensus has very different length from all the branchs, replace
+        #consensus with the median branch instead
+        if abs(len(median_branch) - len(bubble.consensus)) > len(median_branch) // 2:
             bubble.consensus = median_branch
 
+        #finally, keep only MAX_BRANCHES
         if len(new_branches) > MAX_BRANCHES:
-            new_branches = new_branches[:MAX_BRANCHES]
+            left = len(new_branches) // 2 - MAX_BRANCHES // 2
+            right = left + MAX_BRANCHES
+            new_branches = sorted(new_branches, key=len)[left:right]
 
         new_bubbles.append(Bubble(bubble.contig_id, bubble.position))
         new_bubbles[-1].consensus = bubble.consensus
         new_bubbles[-1].branches = new_branches
 
-    return new_bubbles, empty_bubbles, long_branches
+    return new_bubbles, empty_bubbles
 
 
 def _is_solid_kmer(profile, position, err_mode):
@@ -273,17 +310,26 @@ def _is_simple_kmer(profile, position):
     return True
 
 
-def _compute_profile(alignment, platform, genome_len):
+def _compute_profile(alignment, ref_sequence):
     """
     Computes alignment profile
     """
-    max_aln_err = cfg.vals["err_modes"][platform]["max_aln_error"]
+    if len(alignment) == 0:
+        raise Exception("No alignmemnts!")
+    genome_len = alignment[0].trg_len
+
+    #max_aln_err = cfg.vals["err_modes"][platform]["max_aln_error"]
     min_aln_len = cfg.vals["min_polish_aln_len"]
     aln_errors = []
     #filtered = 0
     profile = [ProfileInfo() for _ in range(genome_len)]
+
+    for i in range(genome_len):
+        profile[i].nucl = ref_sequence[i]
+
     for aln in alignment:
-        if aln.err_rate > max_aln_err or len(aln.qry_seq) < min_aln_len:
+        #if aln.err_rate > max_aln_err or len(aln.qry_seq) < min_aln_len:
+        if len(aln.qry_seq) < min_aln_len:
             #filtered += 1
             continue
 
@@ -296,14 +342,14 @@ def _compute_profile(alignment, platform, genome_len):
         for trg_nuc, qry_nuc in zip(trg_seq, qry_seq):
             if trg_nuc == "-":
                 trg_pos -= 1
-            if trg_pos >= genome_len:
-                trg_pos -= genome_len
+            #if trg_pos >= genome_len:
+            #    trg_pos -= genome_len
 
             prof_elem = profile[trg_pos]
             if trg_nuc == "-":
                 prof_elem.num_inserts += 1
             else:
-                prof_elem.nucl = trg_nuc
+                #prof_elem.nucl = trg_nuc
                 prof_elem.coverage += 1
 
                 if qry_nuc == "-":
@@ -362,30 +408,27 @@ def _get_partition(profile, err_mode):
     return partition, long_bubbles
 
 
-def _get_bubble_seqs(alignment, platform, profile, partition, contig_info):
+def _get_bubble_seqs(alignment, profile, partition, contig_id):
     """
     Given genome landmarks, forms bubble sequences
     """
-    if not partition:
+    if not partition or not alignment:
         return []
 
-    #max_aln_err = cfg.vals["err_modes"][platform]["max_aln_error"]
+    ctg_len = alignment[0].trg_len
+
     bubbles = []
-    ext_partition = [0] + partition + [contig_info.length]
+    ext_partition = [0] + partition + [ctg_len]
     for p_left, p_right in zip(ext_partition[:-1], ext_partition[1:]):
-        bubbles.append(Bubble(contig_info.id, p_left))
+        bubbles.append(Bubble(contig_id, p_left))
         consensus = [p.nucl for p in profile[p_left : p_right]]
         bubbles[-1].consensus = "".join(consensus)
 
     for aln in alignment:
-        #if aln.err_rate > max_aln_err: continue
-
-        bubble_id = bisect(partition, aln.trg_start % contig_info.length)
+        bubble_id = bisect(partition, aln.trg_start)
         next_bubble_start = ext_partition[bubble_id + 1]
-        chromosome_start = (bubble_id == 0 and
-                            not contig_info.type == "circular")
-        chromosome_end = (aln.trg_end > partition[-1] and not
-                          contig_info.type == "circular")
+        chromosome_start = bubble_id == 0
+        chromosome_end = aln.trg_end > partition[-1]
 
         branch_start = None
         first_segment = True
@@ -393,8 +436,8 @@ def _get_bubble_seqs(alignment, platform, profile, partition, contig_info):
         for i, trg_nuc in enumerate(aln.trg_seq):
             if trg_nuc == "-":
                 continue
-            if trg_pos >= contig_info.length:
-                trg_pos -= contig_info.length
+            #if trg_pos >= contig_info.length:
+                #trg_pos -= contig_info.length
 
             if trg_pos >= next_bubble_start or trg_pos == 0:
                 if not first_segment or chromosome_start:

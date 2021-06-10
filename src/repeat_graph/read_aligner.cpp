@@ -477,7 +477,7 @@ ReadAligner::ConnIndex ReadAligner::getEdgeConnectivity() const
 	{
 		for (size_t i = 0; i < aln.size() - 1; ++i)
 		{
-			connections[aln[i].edge].insert(aln[i + 1].edge);
+			++connections[aln[i].edge][aln[i + 1].edge];
 		}
 	}
 	return connections;

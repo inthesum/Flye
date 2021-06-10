@@ -21,6 +21,7 @@ struct Bubble
 {
 	std::string header;
 	int position;
+	int subPosition;
 
 	std::string candidate;
 	std::vector<std::string> branches;

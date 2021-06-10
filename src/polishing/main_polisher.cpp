@@ -13,13 +13,13 @@
 bool parseArgs(int argc, char** argv, std::string& bubblesFile, 
 			   std::string& scoringMatrix, std::string& hopoMatrix,
 			   std::string& outConsensus, std::string& outVerbose,
-			   int& numThreads, bool& quiet)
+			   int& numThreads, bool& quiet, bool& enableHopo)
 {
 	auto printUsage = [argv]()
 	{
 		std::cerr << "Usage: flye-polish "
 				  << " --bubbles path --subs-mat path --hopo-mat size --out path\n"
-				  << "\t\t[--treads num] [--quiet] [--debug] [-h]\n\n"
+				  << "\t\t[--treads num] [--enable-hopo] [--quiet] [--debug] [-h]\n\n"
 				  << "Required arguments:\n"
 				  << "  --bubbles path\tpath to bubbles file\n"
 				  << "  --subs-mat path\tpath to substitution matrix\n"
@@ -27,6 +27,8 @@ bool parseArgs(int argc, char** argv, std::string& bubblesFile,
 				  << "  --out path\tpath to output file\n\n"
 				  << "Optional arguments:\n"
 				  << "  --quiet \t\tno terminal output "
+				  << "[default = false] \n"
+				  << "  --enable-hopo \t\tenable homopolymer polishing "
 				  << "[default = false] \n"
 				  << "  --debug \t\textra debug output "
 				  << "[default = false] \n"
@@ -44,6 +46,7 @@ bool parseArgs(int argc, char** argv, std::string& bubblesFile,
 		{"threads", required_argument, 0, 0},
 		{"debug", no_argument, 0, 0},
 		{"quiet", no_argument, 0, 0},
+		{"enable-hopo", no_argument, 0, 0},
 		{0, 0, 0, 0}
 	};
 
@@ -57,6 +60,8 @@ bool parseArgs(int argc, char** argv, std::string& bubblesFile,
 				numThreads = atoi(optarg);
 			else if (!strcmp(longOptions[optionIndex].name, "debug"))
 				outVerbose = true;
+			else if (!strcmp(longOptions[optionIndex].name, "enable-hopo"))
+				enableHopo = true;
 			else if (!strcmp(longOptions[optionIndex].name, "quiet"))
 				quiet = true;
 			else if (!strcmp(longOptions[optionIndex].name, "bubbles"))
@@ -93,12 +98,14 @@ int polisher_main(int argc, char* argv[])
 	std::string outVerbose;
 	int  numThreads = 1;
 	bool quiet = false;
+	bool enableHopo = false;
+
 	if (!parseArgs(argc, argv, bubblesFile, scoringMatrix, 
 				   hopoMatrix, outConsensus, outVerbose, numThreads,
-				   quiet))
+				   quiet, enableHopo))
 		return 1;
 
-	BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet);
+	BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo);
 	if (!outVerbose.empty())
 		bp.enableVerboseOutput(outVerbose);
 	bp.polishAll(bubblesFile, outConsensus, numThreads); 

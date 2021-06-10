@@ -36,7 +36,8 @@ public:
 					   		   std::vector<GraphAlignment>> AlnIndex;
 	AlnIndex makeAlignmentIndex();
 
-	typedef std::unordered_map<GraphEdge*, std::unordered_set<GraphEdge*>> ConnIndex;
+	typedef std::unordered_map<GraphEdge*, 
+							   std::unordered_map<GraphEdge*, int>> ConnIndex;
 	ConnIndex getEdgeConnectivity() const;
 
 private:

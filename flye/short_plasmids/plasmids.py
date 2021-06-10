@@ -77,7 +77,7 @@ def assemble_short_plasmids(args, work_dir, contigs_path):
     fp.write_fasta_dict(plasmids, plasmids_raw)
     _, polished_stats = \
         pol.polish(plasmids_raw, [unmapped_reads_path], work_dir, 1,
-                   args.threads, args.platform, output_progress=False)
+                   args.threads, args.platform, args.read_type, output_progress=False)
 
     #extract coverage
     plasmids_with_coverage = {}

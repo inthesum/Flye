@@ -273,7 +273,8 @@ class JobFinalize(Job):
         shutil.copy(self.graph_file, self.out_files["graph"])
         shutil.copy(self.polished_gfa, self.out_files["gfa"])
 
-        scaffolds = scf.generate_scaffolds(self.contigs_file, self.scaffold_links,
+        scf_links = self.scaffold_links if self.args.scaffold else None
+        scaffolds = scf.generate_scaffolds(self.contigs_file, scf_links,
                                            self.out_files["assembly"])
 
         #create the scaffolds.fasta symlink for backward compatability
@@ -310,29 +311,19 @@ class JobConsensus(Job):
         if not os.path.isdir(self.consensus_dir):
             os.mkdir(self.consensus_dir)
 
-        #split into 1Mb chunks to reduce RAM usage
-        CHUNK_SIZE = 1000000
-        chunks_file = os.path.join(self.consensus_dir, "chunks.fasta")
-        chunks = aln.split_into_chunks(fp.read_sequence_dict(self.in_contigs),
-                                       CHUNK_SIZE)
-        fp.write_fasta_dict(chunks, chunks_file)
-
         logger.info("Running Minimap2")
         out_alignment = os.path.join(self.consensus_dir, "minimap.bam")
-        aln.make_alignment(chunks_file, self.args.reads, self.args.threads,
+        aln.make_alignment(self.in_contigs, self.args.reads, self.args.threads,
                            self.consensus_dir, self.args.platform, out_alignment,
                            reference_mode=True, sam_output=True)
 
-        contigs_info = aln.get_contigs_info(chunks_file)
+        contigs_info = aln.get_contigs_info(self.in_contigs)
         logger.info("Computing consensus")
-        consensus_fasta = cons.get_consensus(out_alignment, chunks_file,
+        consensus_fasta = cons.get_consensus(out_alignment, self.in_contigs,
                                              contigs_info, self.args.threads,
                                              self.args.platform)
 
-        #merge chunks back into single sequences
-        merged_fasta = aln.merge_chunks(consensus_fasta)
-        fp.write_fasta_dict(merged_fasta, self.out_consensus)
-        os.remove(chunks_file)
+        fp.write_fasta_dict(consensus_fasta, self.out_consensus)
         os.remove(out_alignment)
 
 
@@ -365,7 +356,7 @@ class JobPolishing(Job):
         contigs, stats = \
             pol.polish(self.in_contigs, self.args.reads, self.polishing_dir,
                        self.args.num_iters, self.args.threads, self.args.platform,
-                       output_progress=True)
+                       self.args.read_type, output_progress=True)
         #contigs = os.path.join(self.polishing_dir, "polished_1.fasta")
         #stats = os.path.join(self.polishing_dir, "contigs_stats.txt")
         pol.filter_by_coverage(self.args, stats, contigs,
@@ -375,6 +366,9 @@ class JobPolishing(Job):
                                     self.polishing_dir, self.args.platform,
                                     stats, self.args.threads)
         os.remove(contigs)
+        if os.path.getsize(self.out_files["contigs"]) == 0:
+            raise asm.AssembleException("No contigs were assembled - "
+                                        "pipeline stopped")
 
 
 class JobTrestle(Job):
@@ -517,6 +511,7 @@ def _run_polisher_only(args):
     """
     logger.info("Running Flye polisher")
     logger.debug("Cmd: %s", " ".join(sys.argv))
+    bam_input = False
 
     for read_file in args.reads:
         if not os.path.exists(read_file):
@@ -524,9 +519,18 @@ def _run_polisher_only(args):
         if " " in read_file:
             raise ResumeException("Path to reads contain spaces: " + read_file)
 
+        without_gz = read_file.rstrip(".gz")
+        if not any([without_gz.endswith(x) for x in ["fasta", "fa", "fastq", "fq", "bam"]]):
+            raise ResumeException("Unsupported input. Supported types: fasta/fastq/bam")
+        if without_gz.endswith("bam"):
+            bam_input = True
+
+    if bam_input and len(args.reads) > 1:
+        raise ResumeException("Only single bam input supported")
+
     pol.polish(args.polish_target, args.reads, args.out_dir,
                args.num_iters, args.threads, args.platform,
-               output_progress=True)
+               args.read_type, output_progress=True)
 
 
 def _run(args):
@@ -619,7 +623,7 @@ def _usage():
             "\t     [--genome-size SIZE] [--threads int] [--iterations int]\n"
             "\t     [--meta] [--plasmids] [--trestle] [--polish-target]\n"
             "\t     [--keep-haplotypes] [--debug] [--version] [--help] \n"
-            "\t     [--resume] [--resume-from] [--stop-after] \n"
+            "\t     [--scaffold] [--resume] [--resume-from] [--stop-after] \n"
             "\t     [--hifi-error float] [--extra-params] [--min-overlap SIZE]")
 
 
@@ -727,9 +731,12 @@ def main():
     parser.add_argument("--keep-haplotypes", action="store_true",
                         dest="keep_haplotypes", default=False,
                         help="do not collapse alternative haplotypes")
+    parser.add_argument("--scaffold", action="store_true",
+                        dest="scaffold", default=False,
+                        help="enable scaffolding using graph [disabled by default]")
     parser.add_argument("--trestle", action="store_true",
                         dest="trestle", default=False,
-                        help="enable Trestle [disabled]")
+                        help="enable Trestle [disabled by default]")
     parser.add_argument("--polish-target", dest="polish_target",
                         metavar="path", required=False,
                         help="run polisher on the target sequence")

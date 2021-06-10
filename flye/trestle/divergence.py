@@ -15,12 +15,12 @@ from collections import defaultdict
 from flye.six.moves import range
 
 import multiprocessing
-import signal
 import os.path
 
 from flye.polishing.alignment import shift_gaps
-from flye.utils.sam_parser import SynchronizedSamReader
+from flye.utils.sam_parser import SynchronizedSamReader, SynchonizedChunkManager
 import flye.utils.fasta_parser as fp
+from flye.utils.utils import process_in_parallel
 import flye.config.py_cfg as config
 from flye.six.moves import zip
 
@@ -35,13 +35,18 @@ class Profile(object):
         self.nucl = "-"
 
 
-def _thread_worker(aln_reader, contigs_info, platform, results_queue,
+def _thread_worker(aln_reader, chunk_feeder, contigs_info, platform, results_queue,
                    error_queue):
     try:
-        while not aln_reader.is_eof():
-            ctg_id, ctg_aln = aln_reader.get_chunk()
-            if ctg_id is None:
+        while True:
+            ctg_region = chunk_feeder.get_chunk()
+            if ctg_region is None:
                 break
+            ctg_aln = aln_reader.get_alignments(ctg_region.ctg_id, ctg_region.start,
+                                                ctg_region.end)
+            ctg_id = ctg_region.ctg_id
+            if len(ctg_aln) == 0:
+                continue
 
             profile, aln_errors = _contig_profile(ctg_aln, platform,
                                                   contigs_info[ctg_id].length)
@@ -172,35 +177,20 @@ def find_divergence(alignment_path, contigs_path, contigs_info,
                           len(ctg_profile), window_len)
         return
 
-    aln_reader = SynchronizedSamReader(alignment_path,
-                                       fp.read_sequence_dict(contigs_path),
+    contigs_fasta = fp.read_sequence_dict(contigs_path)
+    aln_reader = SynchronizedSamReader(alignment_path, contigs_fasta,
                                        config.vals["max_read_coverage"])
+    chunk_feeder = SynchonizedChunkManager(contigs_fasta)
+
     manager = multiprocessing.Manager()
     results_queue = manager.Queue()
     error_queue = manager.Queue()
 
-    #making sure the main process catches SIGINT
-    orig_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    threads = []
-    for _ in range(num_proc):
-        threads.append(multiprocessing.Process(target=_thread_worker,
-                                               args=(aln_reader, contigs_info,
-                                                     platform, results_queue,
-                                                     error_queue)))
-    signal.signal(signal.SIGINT, orig_sigint)
-
-    for t in threads:
-        t.start()
-    try:
-        for t in threads:
-            t.join()
-    except KeyboardInterrupt:
-        for t in threads:
-            t.terminate()
+    process_in_parallel(_thread_worker, (aln_reader, chunk_feeder, contigs_info, platform,
+                                         results_queue, error_queue), num_proc)
 
     if not error_queue.empty():
         raise error_queue.get()
-    aln_reader.close()
 
     total_aln_errors = []
     while not results_queue.empty():

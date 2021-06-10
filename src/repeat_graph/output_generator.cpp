@@ -111,18 +111,19 @@ void OutputGenerator::outputGfa(const std::vector<UnbranchingPath>& paths,
 	{
 		if (node->inEdges.size() == 1 && node->outEdges.size() == 1)
 		{
-			edgeConnections[node->inEdges.front()].insert(node->outEdges.front());
+			//initialize to zero
+			edgeConnections[node->inEdges.front()][node->outEdges.front()];
 		}
 	}
 
 	std::unordered_set<std::pair<GraphEdge*, GraphEdge*>, pairhash> usedPairs;
 	for (size_t i = 0; i < paths.size(); ++i)
 	{
-		for (auto& edge : edgeConnections[paths[i].path.back()])
+		for (auto& outEdgeIt : edgeConnections[paths[i].path.back()])
 		{
-			auto outPath = edgeToPath[edge];
+			auto outPath = edgeToPath[outEdgeIt.first];
 			GraphEdge* edgeLeft = paths[i].path.back();
-			GraphEdge* edgeRight = edge;
+			GraphEdge* edgeRight = outEdgeIt.first;
 
 			if (usedPairs.count(std::make_pair(edgeLeft, edgeRight))) continue;
 			usedPairs.insert(std::make_pair(edgeLeft, edgeRight));
@@ -135,8 +136,8 @@ void OutputGenerator::outputGfa(const std::vector<UnbranchingPath>& paths,
 			std::string rightSign = outPath->id.strand() ? "+" :"-";
 			std::string rightName = outPath->nameUnsigned();
 
-			fprintf(fout, "L\t%s\t%s\t%s\t%s\t0M\n", leftName.c_str(), 
-					leftSign.c_str(), rightName.c_str(), rightSign.c_str());
+			fprintf(fout, "L\t%s\t%s\t%s\t%s\t0M\tRC:i:%d\n", leftName.c_str(), 
+					leftSign.c_str(), rightName.c_str(), rightSign.c_str(), outEdgeIt.second);
 		}
 	}
 	fclose(fout);

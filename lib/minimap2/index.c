@@ -117,8 +117,8 @@ void mm_idx_stat(const mm_idx_t *mi)
 				if (kh_key(h, k)&1) ++n1;
 			}
 	}
-	fprintf(stderr, "[M::%s::%.3f*%.2f] distinct minimizers: %d (%.2f%% are singletons); average occurrences: %.3lf; average spacing: %.3lf\n",
-			__func__, realtime() - mm_realtime0, cputime() / (realtime() - mm_realtime0), n, 100.0*n1/n, (double)sum / n, (double)len / sum);
+	fprintf(stderr, "[M::%s::%.3f*%.2f] distinct minimizers: %d (%.2f%% are singletons); average occurrences: %.3lf; average spacing: %.3lf; total length: %ld\n",
+			__func__, realtime() - mm_realtime0, cputime() / (realtime() - mm_realtime0), n, 100.0*n1/n, (double)sum / n, (double)len / sum, (long)len);
 }
 
 int mm_idx_index_name(mm_idx_t *mi)
@@ -316,6 +316,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 				} else seq->name = 0;
 				seq->len = s->seq[i].l_seq;
 				seq->offset = p->sum_len;
+				seq->is_alt = 0;
 				// copy the sequence
 				if (!(p->mi->flag & MM_I_NO_SEQ)) {
 					for (j = 0; j < seq->len; ++j) { // TODO: this is not the fastest way, but let's first see if speed matters here
@@ -414,6 +415,7 @@ mm_idx_t *mm_idx_str(int w, int k, int is_hpc, int bucket_bits, int n, const cha
 		}
 		p->offset = sum_len;
 		p->len = strlen(s);
+		p->is_alt = 0;
 		for (j = 0; j < p->len; ++j) {
 			int c = seq_nt4_table[(uint8_t)s[j]];
 			uint64_t o = sum_len + j;
@@ -500,6 +502,7 @@ mm_idx_t *mm_idx_load(FILE *fp)
 		}
 		fread(&s->len, 4, 1, fp);
 		s->offset = sum_len;
+		s->is_alt = 0;
 		sum_len += s->len;
 	}
 	for (i = 0; i < 1<<mi->b; ++i) {
@@ -607,6 +610,30 @@ int mm_idx_reader_eof(const mm_idx_reader_t *r) // TODO: in extremely rare cases
 #include "kseq.h"
 KSTREAM_DECLARE(gzFile, gzread)
 
+int mm_idx_alt_read(mm_idx_t *mi, const char *fn)
+{
+	int n_alt = 0;
+	gzFile fp;
+	kstream_t *ks;
+	kstring_t str = {0,0,0};
+	fp = fn && strcmp(fn, "-")? gzopen(fn, "r") : gzdopen(fileno(stdin), "r");
+	if (fp == 0) return -1;
+	ks = ks_init(fp);
+	if (mi->h == 0) mm_idx_index_name(mi);
+	while (ks_getuntil(ks, KS_SEP_LINE, &str, 0) >= 0) {
+		char *p;
+		int id;
+		for (p = str.s; *p && !isspace(*p); ++p) { }
+		*p = 0;
+		id = mm_idx_name2id(mi, str.s);
+		if (id >= 0) mi->seq[id].is_alt = 1, ++n_alt;
+	}
+	mi->n_alt = n_alt;
+	if (mm_verbose >= 3)
+		fprintf(stderr, "[M::%s] found %d ALT contigs\n", __func__, n_alt);
+	return n_alt;
+}
+
 #define sort_key_bed(a) ((a).st)
 KRADIX_SORT_INIT(bed, mm_idx_intv1_t, sort_key_bed, 4)
 
@@ -627,7 +654,7 @@ mm_idx_intv_t *mm_idx_read_bed(const mm_idx_t *mi, const char *fn, int read_junc
 		char *p, *q, *bl, *bs;
 		int32_t i, id = -1, n_blk = 0;
 		for (p = q = str.s, i = 0;; ++p) {
-			if (*p == 0 || isspace(*p)) {
+			if (*p == 0 || *p == '\t') {
 				int32_t c = *p;
 				*p = 0;
 				if (i == 0) { // chr

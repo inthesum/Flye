@@ -24,14 +24,15 @@ def generate_scaffolds(contigs_file, links_file, out_scaffolds):
     used_contigs = set()
 
     connections = {}
-    with open(links_file, "r") as f:
-        for line in f:
-            line = line.strip()
-            if not line: continue
-            ctg_1, sign_1, ctg_2, sign_2 = line.split("\t")
-            if ctg_1 in contigs_fasta and ctg_2 in contigs_fasta:
-                connections[sign_1 + ctg_1] = sign_2 + ctg_2
-                connections[rc(sign_2) + ctg_2] = rc(sign_1) + ctg_1
+    if links_file is not None:
+        with open(links_file, "r") as f:
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                ctg_1, sign_1, ctg_2, sign_2 = line.split("\t")
+                if ctg_1 in contigs_fasta and ctg_2 in contigs_fasta:
+                    connections[sign_1 + ctg_1] = sign_2 + ctg_2
+                    connections[rc(sign_2) + ctg_2] = rc(sign_1) + ctg_1
 
     scaffolds_fasta = {}
     scaffolds_seq = {}
