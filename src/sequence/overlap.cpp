@@ -108,8 +108,10 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec,
 	const int kmerSize = Parameters::get().kmerSize;
 	//const float minKmerSruvivalRate = std::exp(-_maxDivergence * kmerSize);
 	const float minKmerSruvivalRate = 0.01;
-	const float LG_GAP = 0.1;
-	const float SM_GAP = 0.1;
+
+	static const float LG_GAP = (float)Config::get("chain_large_gap_penalty");
+	static const float SM_GAP = (float)Config::get("chain_small_gap_penalty");
+	static const int GAP_JUMP_THLD = (int)Config::get("chain_gap_jump_threshold");
 
 	//outSuggestChimeric = false;
 	int32_t curLen = fastaRec.sequence.length();
@@ -296,7 +298,7 @@ OverlapDetector::getSeqOverlaps(const FastaRecord& fastaRec,
 										  (extNext - extPrev));
 					//int32_t gapCost = jumpDiv ? 
 					//		kmerSize * jumpDiv + ilog2_32(jumpDiv) : 0;
-					int32_t gapCost = (jumpDiv > 100 ? LG_GAP : SM_GAP) * jumpDiv;
+					int32_t gapCost = (jumpDiv > GAP_JUMP_THLD ? LG_GAP : SM_GAP) * jumpDiv;
 					int32_t nextScore = scoreTable[j] + matchScore - gapCost;
 					if (nextScore > maxScore)
 					{
