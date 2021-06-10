@@ -446,60 +446,6 @@ void Extender::assembleDisjointigs()
 		<< " disjointigs";
 }
 
-
-/*std::vector<FastaRecord::Id> 
-	Extender::getInnerReadsPrecise(const ExtensionInfo& exInfo)
-{
-	//first, generate disjointig sequence
-	std::string disjSequence;
-
-	int32_t stitchBegin = 0;
-	int32_t stitchEnd = 0;
-	for (size_t i = 0; i < exInfo.reads.size() - 1; ++i)
-	{
-		auto readsOvlp = getOverlapBetween(_ovlpContainer, exInfo.reads[i], 
-										   exInfo.reads[i + 1]);
-
-		stitchEnd = readsOvlp.curEnd;
-		int32_t stitchLen = stitchEnd - stitchBegin;
-		if (stitchLen > 0)
-		{
-			//Logger::get().debug() << stitchBegin << " " << stitchEnd;
-			disjSequence += _readsContainer.getSeq(exInfo.reads[i])
-								.substr(stitchBegin, stitchEnd - stitchBegin).str();
-			stitchBegin = readsOvlp.extEnd;
-		}
-		else
-		{
-			//Logger::get().debug() << "Skip " << stitchLen;
-			stitchBegin = readsOvlp.extEnd - stitchLen;
-		}
-
-	}
-
-	int32_t stitchLen = _readsContainer.seqLen(exInfo.reads.back()) - stitchBegin;
-	if (stitchLen > 0)
-	{
-		disjSequence += _readsContainer.getSeq(exInfo.reads.back()).substr(stitchBegin, stitchLen).str();
-	}
-
-	//now, search against the reads index
-	FastaRecord fastaRec(DnaSequence(disjSequence), "", FastaRecord::ID_NONE);
-	auto disjOverlaps = _ovlpContainer.quickSeqOverlaps(fastaRec);
-
-	const int FLANK = (int)Config::get("maximum_overhang");
-	std::vector<FastaRecord::Id> innerReads;
-	for (auto& ovlp : disjOverlaps)
-	{
-		if (ovlp.extBegin < FLANK && ovlp.extLen - ovlp.extEnd < FLANK)
-		{
-			innerReads.push_back(ovlp.extId);
-		}
-	}
-	return innerReads;
-}*/
-
-
 std::vector<FastaRecord::Id> 
 	Extender::getInnerReads(const std::vector<OverlapRange>& ovlps)
 {

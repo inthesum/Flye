@@ -64,10 +64,6 @@ private:
 	std::vector<FastaRecord::Id> 
 		getInnerReads(const std::vector<OverlapRange>& ovlps);
 
-	//std::vector<FastaRecord::Id> 
-	//	getInnerReadsPrecise(const ExtensionInfo& exInfo);
-
-
 	const SequenceContainer& _readsContainer;
 	OverlapContainer& _ovlpContainer;
 	ChimeraDetector   _chimDetector;
