@@ -366,6 +366,9 @@ class JobPolishing(Job):
                                     self.polishing_dir, self.args.platform,
                                     stats, self.args.threads)
         os.remove(contigs)
+        if os.path.getsize(self.out_files["contigs"]) == 0:
+            raise asm.AssembleException("No contigs were assembled - "
+                                        "pipeline stopped")
 
 
 class JobTrestle(Job):
