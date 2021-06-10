@@ -40,6 +40,11 @@ Then, Flye will be available as:
 
     python bin/flye
 
+Building on ARM architecture
+----------------------------
+
+In case building Flye on ARM architecture fails, you might need to modify minimap2 compilation parameters:
+https://github.com/fenderglass/Flye/issues/386
 
 Installing from source
 ----------------------
