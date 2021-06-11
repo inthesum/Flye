@@ -142,7 +142,7 @@ bool ChimeraDetector::testReadByCoverage(FastaRecord::Id readId,
 	auto coverage = this->getReadCoverage(readId, readOvlps);
 	if (coverage.empty()) return false;
 
-	const int CHIMERA_OVERHANG = 1000;
+	const int CHIMERA_OVERHANG = (int)Config::get("chimera_overhang");
 	const int MAX_FLANK = CHIMERA_OVERHANG / Config::get("chimera_window");
 	int32_t goodStart = MAX_FLANK;
 	int32_t goodEnd = coverage.size() - MAX_FLANK - 1;
