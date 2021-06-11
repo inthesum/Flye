@@ -290,10 +290,10 @@ void Extender::assembleDisjointigs()
 			++totalOverlaps;
 		}
 
-		int maxStartExt = _chimDetector.getOverlapCoverage() * 10;
-		int minStartExt = 1;
-		int extLeft = this->countLeftExtensions(startOvlps);
-		int extRight = this->countRightExtensions(startOvlps);
+		//int maxStartExt = _chimDetector.getOverlapCoverage() * 10;
+		//int minStartExt = 1;
+		//int extLeft = this->countLeftExtensions(startOvlps);
+		//int extRight = this->countRightExtensions(startOvlps);
 
 		if (_chimDetector.isChimeric(startRead, startOvlps) ||
 			_readsContainer.seqLen(startRead) < _safeOverlap ||
