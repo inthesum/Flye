@@ -626,6 +626,25 @@ void HaplotypeResolver::collapseHaplotypes()
 		}
 	}
 
+	//for each haplotype path, if it's a loop - convert it to a linear edge
+	GraphProcessor proc(_graph, _asmSeqs);
+	auto unbranchingPaths = proc.getUnbranchingPaths();
+	for (auto& path : unbranchingPaths)
+	{
+		if (!path.circular || path.id.strand()) continue;
+
+		for (auto& edge : path.path)
+		{
+			if (edge->altHaplotype)
+			{
+				//Logger::get().debug() << "Uncircularized: " << path.edgesStr();
+				_graph.disconnectRight(path.path.back());
+				_graph.disconnectLeft(_graph.complementEdge(path.path.front()));
+				break;
+			}
+		}
+	}
+
 	_aligner.updateAlignments();
 	Logger::get().debug() << "[SIMPL] Collapsed " << numBridged << " haplotypes";
 }
