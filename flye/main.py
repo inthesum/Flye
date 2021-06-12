@@ -622,7 +622,7 @@ def _usage():
             "\t     --out-dir PATH\n\n"
             "\t     [--genome-size SIZE] [--threads int] [--iterations int]\n"
             "\t     [--meta] [--plasmids] [--trestle] [--polish-target]\n"
-            "\t     [--keep-haplotypes] [--debug] [--version] [--help] \n"
+            "\t     [--keep-haplotypes] [--short] [--debug] [--version] [--help] \n"
             "\t     [--scaffold] [--resume] [--resume-from] [--stop-after] \n"
             "\t     [--hifi-error float] [--extra-params] [--min-overlap SIZE]")
 
@@ -728,6 +728,9 @@ def main():
     parser.add_argument("--meta", action="store_true",
                         dest="meta", default=False,
                         help="metagenome / uneven coverage mode")
+    parser.add_argument("--short", action="store_true",
+                        dest="short_mode", default=False,
+                        help="mode to assemble shorter sequences (viruses/plasmids/amplicons)")
     parser.add_argument("--keep-haplotypes", action="store_true",
                         dest="keep_haplotypes", default=False,
                         help="do not collapse alternative haplotypes")

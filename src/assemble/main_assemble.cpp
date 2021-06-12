@@ -26,14 +26,14 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 			   std::string& outAssembly, std::string& logFile, size_t& genomeSize,
 			   int& kmerSize, bool& debug, size_t& numThreads, int& minOverlap, 
 			   std::string& configPath, int& minReadLength, bool& unevenCov, 
-			   std::string& extraParams)
+			   std::string& extraParams, bool& shortMode)
 {
 	auto printUsage = []()
 	{
 		std::cerr << "Usage: flye-assemble "
 				  << " --reads path --out-asm path --config path [--genome-size size]\n"
 				  << "\t\t[--min-read length] [--log path] [--treads num] [--extra-params]\n"
-				  << "\t\t[--kmer size] [--meta] [--min-ovlp size] [--debug] [-h]\n\n"
+				  << "\t\t[--kmer size] [--meta] [--short] [--min-ovlp size] [--debug] [-h]\n\n"
 				  << "Required arguments:\n"
 				  << "  --reads path\tcomma-separated list of read files\n"
 				  << "  --out-asm path\tpath to output file\n"
@@ -46,6 +46,8 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 				  << "  --debug \t\tenable debug output "
 				  << "[default = false] \n"
 				  << "  --meta \t\tenable uneven coverage (metagenome) mode "
+				  << "[default = false] \n"
+				  << "  --short \t\tassemble short sequences at a cost of possibly reduced contiguity "
 				  << "[default = false] \n"
 				  << "  --extra-params additional config parameters "
 				  << "[default = not set] \n"
@@ -69,6 +71,7 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 		{"min-ovlp", required_argument, 0, 0},
 		{"extra-params", required_argument, 0, 0},
 		{"meta", no_argument, 0, 0},
+		{"short", no_argument, 0, 0},
 		{"debug", no_argument, 0, 0},
 		{0, 0, 0, 0}
 	};
@@ -93,6 +96,8 @@ bool parseArgs(int argc, char** argv, std::string& readsFasta,
 				debug = true;
 			else if (!strcmp(longOptions[optionIndex].name, "meta"))
 				unevenCov = true;
+			else if (!strcmp(longOptions[optionIndex].name, "short"))
+				shortMode = true;
 			else if (!strcmp(longOptions[optionIndex].name, "reads"))
 				readsFasta = optarg;
 			else if (!strcmp(longOptions[optionIndex].name, "out-asm"))
@@ -193,6 +198,7 @@ int assemble_main(int argc, char** argv)
 	bool debugging = false;
 	bool unevenCov = false;
 	size_t numThreads = 1;
+	bool shortMode = false;
 	std::string readsFasta;
 	std::string outAssembly;
 	std::string logFile;
@@ -201,7 +207,7 @@ int assemble_main(int argc, char** argv)
 
 	if (!parseArgs(argc, argv, readsFasta, outAssembly, logFile, genomeSize,
 				   kmerSize, debugging, numThreads, minOverlap, configPath, 
-				   minReadLength, unevenCov, extraParams)) return 1;
+				   minReadLength, unevenCov, extraParams, shortMode)) return 1;
 
 	Logger::get().setDebugging(debugging);
 	if (!logFile.empty()) Logger::get().setOutputFile(logFile);
@@ -224,10 +230,12 @@ int assemble_main(int argc, char** argv)
 	Parameters::get().kmerSize = kmerSize;
 	Parameters::get().minimumOverlap = minOverlap;
 	Parameters::get().unevenCoverage = unevenCov;
+	Parameters::get().shortSequences = shortMode;
 	Logger::get().debug() << "Running with k-mer size: " << 
 		Parameters::get().kmerSize; 
 	Logger::get().debug() << "Running with minimum overlap " << minOverlap;
 	Logger::get().debug() << "Metagenome mode: " << "NY"[unevenCov];
+	Logger::get().debug() << "Short mode: " << "NY"[shortMode];
 
 	//TODO: unify minimumOverlap ad safeOverlap concepts
 	Parameters::get().minimumOverlap = 1000;
@@ -307,7 +315,10 @@ int assemble_main(int argc, char** argv)
 	ConsensusGenerator consGen;
 	auto disjointigsFasta = 
 		consGen.generateConsensuses(extender.getDisjointigPaths());
-	removeContainedDisjointigs(disjointigsFasta, readOverlaps.getDivergenceThreshold());
+	if (Parameters::get().shortSequences)
+	{
+		removeContainedDisjointigs(disjointigsFasta, readOverlaps.getDivergenceThreshold());
+	}
 	SequenceContainer::writeFasta(disjointigsFasta, outAssembly);
 
 	Logger::get().debug() << "Peak RAM usage: " 

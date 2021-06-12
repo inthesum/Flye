@@ -130,7 +130,9 @@ Extender::ExtensionInfo Extender::extendDisjointig(FastaRecord::Id startRead)
 
 			const std::vector<OverlapRange>& extOverlaps = _ovlpContainer.lazySeqOverlaps(ovlp.extId);
 
-			if (_chimDetector.isChimeric(ovlp.extId, extOverlaps)) continue;
+			//in short mode, do not use (putative) chimeras
+			if (Parameters::get().shortSequences && 
+				_chimDetector.isChimeric(ovlp.extId, extOverlaps)) continue;
 
 			//pick the first available highly reliable extenion (which will
 			//also be the longest as extensions are sorted)
@@ -304,18 +306,17 @@ void Extender::assembleDisjointigs()
 		//Good to go!
 		ExtensionInfo exInfo = this->extendDisjointig(startRead);
 
-		//auto innerReadsPrecise = this->getInnerReadsPrecise(exInfo);
-
 		//Exclusive part - updating the overall assembly
 		std::lock_guard<std::mutex> guard(indexMutex);
 
-		/*if (exInfo.reads.size() - exInfo.numSuspicious < 
-			(size_t)Config::get("min_reads_in_disjointig"))
+		bool tooShort = exInfo.reads.size() - exInfo.numSuspicious < 
+						(size_t)Config::get("min_reads_in_disjointig");
+		if (tooShort && !Parameters::get().shortSequences)
 		{
 			//Logger::get().debug() << "Thrown away: " << exInfo.reads.size() << " " << exInfo.numSuspicious
 			//	<< " " << exInfo.leftTip << " " << exInfo.rightTip;
 			return;
-		}*/
+		}
 		
 		int innerCount = 0;
 		//do not count first and last reads - they are inner by defalut
