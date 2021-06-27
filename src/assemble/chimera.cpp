@@ -134,6 +134,28 @@ std::vector<int32_t>
 }
 
 
+float ChimeraDetector::maxCoverageDrop(FastaRecord::Id readId,
+									   const std::vector<OverlapRange>& readOvlps)
+{
+	auto coverage = this->getReadCoverage(readId, readOvlps);
+	if (coverage.empty()) return 0;
+
+	const int CHIMERA_OVERHANG = (int)Config::get("chimera_overhang");
+	const int MAX_FLANK = CHIMERA_OVERHANG / Config::get("chimera_window");
+	int32_t goodStart = MAX_FLANK;
+	int32_t goodEnd = coverage.size() - MAX_FLANK - 1;
+
+	if (goodEnd <= goodStart) return 0;
+	float maxDrop = 0;
+	for (int32_t i = goodStart; i <= goodEnd - 1; ++i)
+	{
+		float rate = (float)(std::max(coverage[i], coverage[i + 1]) + 1) / (std::min(coverage[i], coverage[i + 1]) + 1);
+		if (maxDrop < rate) maxDrop = rate;
+	}
+
+	return maxDrop;
+}
+
 bool ChimeraDetector::testReadByCoverage(FastaRecord::Id readId,
 										 const std::vector<OverlapRange>& readOvlps)
 {

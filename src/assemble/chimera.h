@@ -19,9 +19,12 @@ public:
 	{}
 
 	void estimateGlobalCoverage();
-	//bool isChimeric(FastaRecord::Id readId);
 	bool isChimeric(FastaRecord::Id readId, 
 					const std::vector<OverlapRange>& readOvlps);
+
+	float maxCoverageDrop(FastaRecord::Id readId, 
+						  const std::vector<OverlapRange>& readOvlps);
+
 	int  getOverlapCoverage() const {return _overlapCoverage;}
 	int  getRightTrim(FastaRecord::Id readId);
 	bool isRepetitiveRegion(FastaRecord::Id readId, int32_t start, int32_t end, bool debug=false);

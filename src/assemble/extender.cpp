@@ -130,12 +130,11 @@ Extender::ExtensionInfo Extender::extendDisjointig(FastaRecord::Id startRead)
 
 			const std::vector<OverlapRange>& extOverlaps = _ovlpContainer.lazySeqOverlaps(ovlp.extId);
 
-			//in short mode, do not use (putative) chimeras
-			if (Parameters::get().shortSequences && 
-				_chimDetector.isChimeric(ovlp.extId, extOverlaps)) continue;
+			if (_chimDetector.isChimeric(ovlp.extId, extOverlaps) &&
+				_chimDetector.maxCoverageDrop(ovlp.extId, extOverlaps) > 5.0) continue;
 
-			//pick the first available highly reliable extenion (which will
-			//also be the longest as extensions are sorted)
+			//optimistically, pick the first available highly reliable extenion (which will
+			//also be with the longest overlap as extensions are sorted based on that)
 			if (!_chimDetector.isChimeric(ovlp.extId, extOverlaps) &&
 				this->countRightExtensions(extOverlaps) >= minExtensions &&
 				ovlp.minRange() > _safeOverlap)
@@ -144,8 +143,8 @@ Extender::ExtensionInfo Extender::extendDisjointig(FastaRecord::Id startRead)
 				break;
 			}
 
-			//suspicious extentions
-			if (this->countRightExtensions(extOverlaps) > 0)
+			//alternatives, in the decreasing order of preference
+			else if (this->countRightExtensions(extOverlaps) > 0)
 			{
 				if (!bestSuspicious) bestSuspicious = &ovlp;
 				if (ovlp.minRange() < _safeOverlap) break;
