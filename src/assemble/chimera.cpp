@@ -165,7 +165,7 @@ bool ChimeraDetector::testReadByCoverage(FastaRecord::Id readId,
 	}
 	else
 	{
-		threshold = std::max(1L, std::lround(medianCoverage / MAX_DROP_RATE));
+		threshold = std::min(10L, std::max(1L, std::lround(medianCoverage / MAX_DROP_RATE)));
 	}
 
 	bool lowCoverage = false;
