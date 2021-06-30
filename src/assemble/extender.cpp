@@ -308,14 +308,13 @@ void Extender::assembleDisjointigs()
 		//Exclusive part - updating the overall assembly
 		std::lock_guard<std::mutex> guard(indexMutex);
 
-		bool tooShort = exInfo.reads.size() - exInfo.numSuspicious < 
-						(size_t)Config::get("min_reads_in_disjointig");
-		if (tooShort && !Parameters::get().shortSequences)
+		/*if (exInfo.reads.size() - exInfo.numSuspicious < 
+			(size_t)Config::get("min_reads_in_disjointig"))
 		{
 			//Logger::get().debug() << "Thrown away: " << exInfo.reads.size() << " " << exInfo.numSuspicious
 			//	<< " " << exInfo.leftTip << " " << exInfo.rightTip;
 			return;
-		}
+		}*/
 		
 		int innerCount = 0;
 		//do not count first and last reads - they are inner by defalut
@@ -400,7 +399,7 @@ void Extender::assembleDisjointigs()
 					  Parameters::get().numThreads, /*progress*/ false);
 	progress.setDone();
 
-	bool addSingletons = (bool)Config::get("add_unassembled_reads");
+	/*bool addSingletons = (bool)Config::get("add_unassembled_reads");
 	if (addSingletons)
 	{
 		std::vector<FastaRecord::Id> sortedByLength;
@@ -439,7 +438,7 @@ void Extender::assembleDisjointigs()
 			}
 		}
 		Logger::get().info() << "Added " << singletonsAdded << " singleton reads";
-	}
+	}*/
 
 	this->convertToDisjointigs();
 	Logger::get().info() << "Assembled " << _disjointigPaths.size() 

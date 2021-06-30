@@ -315,10 +315,10 @@ int assemble_main(int argc, char** argv)
 	ConsensusGenerator consGen;
 	auto disjointigsFasta = 
 		consGen.generateConsensuses(extender.getDisjointigPaths());
-	if (Parameters::get().shortSequences)
-	{
-		removeContainedDisjointigs(disjointigsFasta, readOverlaps.getDivergenceThreshold());
-	}
+	//if (Parameters::get().shortSequences)
+	//{
+	removeContainedDisjointigs(disjointigsFasta, readOverlaps.getDivergenceThreshold());
+	//}
 	SequenceContainer::writeFasta(disjointigsFasta, outAssembly);
 
 	Logger::get().debug() << "Peak RAM usage: " 
