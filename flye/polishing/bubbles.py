@@ -28,7 +28,7 @@ logger = logging.getLogger()
 
 
 class ProfileInfo(object):
-    __slots__ = ("nucl", "num_inserts", "num_deletions",
+    __slots__ = ("nucl", "insertions", "propagated_ins", "num_deletions",
                  "num_missmatch", "coverage")
 
     def __init__(self):
@@ -347,7 +347,8 @@ def _compute_profile(alignment, ref_sequence):
 
             prof_elem = profile[trg_pos]
             if trg_nuc == "-":
-                prof_elem.num_inserts += 1
+                prof_elem.insertions[aln.qry_id] += qry_nuc
+                #prof_elem.num_inserts += 1
             else:
                 #prof_elem.nucl = trg_nuc
                 prof_elem.coverage += 1
