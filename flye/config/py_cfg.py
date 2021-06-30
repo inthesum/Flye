@@ -22,7 +22,7 @@ vals = {
         },
 
         "min_overlap_range" : {
-            "raw" : [1000, 5000],
+            "raw" : [1000, 10000],
             "corrected" : [1000, 5000],
             "hifi" : [1000, 5000],
             "subasm" : [1000, 1000]
@@ -48,7 +48,7 @@ vals = {
                 "solid_missmatch" : 0.2,
                 "solid_indel" : 0.2,
                 "max_aln_error" : 0.25,
-                "hopo_enabled" : True
+                "hopo_enabled" : False
             },
             "nano" : {
                 "subs_matrix" : "config/bin_cfg/nano_r94_substitutions.mat",
@@ -56,7 +56,7 @@ vals = {
                 "solid_missmatch" : 0.3,
                 "solid_indel" : 0.3,
                 "max_aln_error" : 0.25,
-                "hopo_enabled" : True
+                "hopo_enabled" : False
             },
         },
 
