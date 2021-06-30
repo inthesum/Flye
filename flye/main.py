@@ -531,6 +531,7 @@ def _run_polisher_only(args):
     pol.polish(args.polish_target, args.reads, args.out_dir,
                args.num_iters, args.threads, args.platform,
                args.read_type, output_progress=True)
+    logger.info("Done!")
 
 
 def _run(args):

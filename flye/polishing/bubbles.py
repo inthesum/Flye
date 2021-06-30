@@ -28,12 +28,14 @@ logger = logging.getLogger()
 
 
 class ProfileInfo(object):
-    __slots__ = ("nucl", "num_inserts", "num_deletions",
+    __slots__ = ("nucl", "insertions", "propagated_ins", "num_deletions",
                  "num_missmatch", "coverage")
 
     def __init__(self):
         self.nucl = ""
-        self.num_inserts = 0
+        #self.num_inserts = 0
+        self.propagated_ins = 0
+        self.insertions = defaultdict(str)
         self.num_deletions = 0
         self.num_missmatch = 0
         self.coverage = 0
@@ -270,7 +272,8 @@ def _is_solid_kmer(profile, position, err_mode):
             return False
         local_missmatch = (profile[i].num_missmatch +
                            profile[i].num_deletions) / profile[i].coverage
-        local_ins = profile[i].num_inserts / profile[i].coverage
+        #local_ins = len(profile[i].insertions) / profile[i].coverage
+        local_ins = profile[i].propagated_ins / profile[i].coverage
         if local_missmatch > MISSMATCH_RATE or local_ins > INS_RATE:
             return False
     return True
@@ -347,7 +350,8 @@ def _compute_profile(alignment, ref_sequence):
 
             prof_elem = profile[trg_pos]
             if trg_nuc == "-":
-                prof_elem.num_inserts += 1
+                prof_elem.insertions[aln.qry_id] += qry_nuc
+                #prof_elem.num_inserts += 1
             else:
                 #prof_elem.nucl = trg_nuc
                 prof_elem.coverage += 1
@@ -358,6 +362,16 @@ def _compute_profile(alignment, ref_sequence):
                     prof_elem.num_missmatch += 1
 
             trg_pos += 1
+
+    for i in range(genome_len):
+        for ins_read, ins_str in profile[i].insertions.items():
+            profile[i].propagated_ins += 1
+            span = len(ins_str)
+            for j in range(max(0, i - span), i):
+                profile[j].propagated_ins += 1
+            for j in range(i + 1, min(i + span + 1, genome_len)):
+                profile[j].propagated_ins += 1
+            
 
     #logger.debug("Filtered: {0} out of {1}".format(filtered, len(alignment)))
     return profile, aln_errors
