@@ -22,7 +22,7 @@ vals = {
         },
 
         "min_overlap_range" : {
-            "raw" : [1000, 5000],
+            "raw" : [1000, 10000],
             "corrected" : [1000, 5000],
             "hifi" : [1000, 5000],
             "subasm" : [1000, 1000]
