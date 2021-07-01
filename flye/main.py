@@ -29,7 +29,7 @@ from flye.config.configurator import setup_params, ConfigException
 from flye.utils.bytes2human import human2bytes, bytes2human
 from flye.utils.sam_parser import AlignmentException
 import flye.utils.fasta_parser as fp
-import flye.short_plasmids.plasmids as plas
+#import flye.short_plasmids.plasmids as plas
 import flye.trestle.trestle as tres
 import flye.trestle.graph_resolver as tres_graph
 from flye.repeat_graph.repeat_graph import RepeatGraph
@@ -124,40 +124,40 @@ class JobAssembly(Job):
         logger.debug("Disjointigs length: %d, N50: %d", asm_len, asm_n50)
 
 
-class JobShortPlasmidsAssembly(Job):
-    def __init__(self, args, work_dir, contigs_file, repeat_graph,
-                 graph_edges):
-        super(JobShortPlasmidsAssembly, self).__init__()
-
-        self.args = args
-        self.work_dir = work_dir
-        self.work_dir = os.path.join(work_dir, "22-plasmids")
-        self.contigs_path = contigs_file
-        self.repeat_graph = repeat_graph
-        self.graph_edges = graph_edges
-
-        self.name = "plasmids"
-        self.out_files["repeat_graph"] = os.path.join(self.work_dir,
-                                                      "repeat_graph_dump")
-        self.out_files["repeat_graph_edges"] = \
-            os.path.join(self.work_dir, "repeat_graph_edges.fasta")
-
-
-    def run(self):
-        super(JobShortPlasmidsAssembly, self).run()
-        logger.info("Recovering short unassembled sequences")
-        if not os.path.isdir(self.work_dir):
-            os.mkdir(self.work_dir)
-        plasmids = plas.assemble_short_plasmids(self.args, self.work_dir,
-                                                self.contigs_path)
-
-        #updating repeat graph
-        repeat_graph = RepeatGraph(fp.read_sequence_dict(self.graph_edges))
-        repeat_graph.load_from_file(self.repeat_graph)
-        plas.update_graph(repeat_graph, plasmids)
-        repeat_graph.dump_to_file(self.out_files["repeat_graph"])
-        fp.write_fasta_dict(repeat_graph.edges_fasta,
-                            self.out_files["repeat_graph_edges"])
+#class JobShortPlasmidsAssembly(Job):
+#    def __init__(self, args, work_dir, contigs_file, repeat_graph,
+#                 graph_edges):
+#        super(JobShortPlasmidsAssembly, self).__init__()
+#
+#        self.args = args
+#        self.work_dir = work_dir
+#        self.work_dir = os.path.join(work_dir, "22-plasmids")
+#        self.contigs_path = contigs_file
+#        self.repeat_graph = repeat_graph
+#        self.graph_edges = graph_edges
+#
+#        self.name = "plasmids"
+#        self.out_files["repeat_graph"] = os.path.join(self.work_dir,
+#                                                      "repeat_graph_dump")
+#        self.out_files["repeat_graph_edges"] = \
+#            os.path.join(self.work_dir, "repeat_graph_edges.fasta")
+#
+#
+#    def run(self):
+#        super(JobShortPlasmidsAssembly, self).run()
+#        logger.info("Recovering short unassembled sequences")
+#        if not os.path.isdir(self.work_dir):
+#            os.mkdir(self.work_dir)
+#        plasmids = plas.assemble_short_plasmids(self.args, self.work_dir,
+#                                                self.contigs_path)
+#
+#        #updating repeat graph
+#        repeat_graph = RepeatGraph(fp.read_sequence_dict(self.graph_edges))
+#        repeat_graph.load_from_file(self.repeat_graph)
+#        plas.update_graph(repeat_graph, plasmids)
+#        repeat_graph.dump_to_file(self.out_files["repeat_graph"])
+#        fp.write_fasta_dict(repeat_graph.edges_fasta,
+#                            self.out_files["repeat_graph_edges"])
 
 
 
@@ -461,10 +461,11 @@ def _create_job_list(args, work_dir, log_file):
 
     #Short plasmids
     if args.plasmids:
-        jobs.append(JobShortPlasmidsAssembly(args, work_dir, disjointigs,
-                                             repeat_graph, repeat_graph_edges))
-        repeat_graph_edges = jobs[-1].out_files["repeat_graph_edges"]
-        repeat_graph = jobs[-1].out_files["repeat_graph"]
+        logger.warning("--plasmids mode is no longer available. Command line option will be removed in the future versions")
+    #    jobs.append(JobShortPlasmidsAssembly(args, work_dir, disjointigs,
+    #                                         repeat_graph, repeat_graph_edges))
+    #    repeat_graph_edges = jobs[-1].out_files["repeat_graph_edges"]
+    #    repeat_graph = jobs[-1].out_files["repeat_graph"]
 
     #Contigger
     jobs.append(JobContigger(args, work_dir, log_file, repeat_graph_edges,
@@ -623,7 +624,7 @@ def _usage():
             "\t     --out-dir PATH\n\n"
             "\t     [--genome-size SIZE] [--threads int] [--iterations int]\n"
             "\t     [--meta] [--plasmids] [--trestle] [--polish-target]\n"
-            "\t     [--keep-haplotypes] [--short] [--debug] [--version] [--help] \n"
+            "\t     [--keep-haplotypes] [--debug] [--version] [--help] \n"
             "\t     [--scaffold] [--resume] [--resume-from] [--stop-after] \n"
             "\t     [--hifi-error float] [--extra-params] [--min-overlap SIZE]")
 
@@ -725,13 +726,13 @@ def main():
                         help="extra configuration parameters list (comma-separated)")
     parser.add_argument("--plasmids", action="store_true",
                         dest="plasmids", default=False,
-                        help="rescue short unassembled plasmids")
+                        help="unused (retained for backward compatibility)")
     parser.add_argument("--meta", action="store_true",
                         dest="meta", default=False,
                         help="metagenome / uneven coverage mode")
-    parser.add_argument("--short", action="store_true",
-                        dest="short_mode", default=False,
-                        help="mode to assemble shorter sequences (viruses/plasmids/amplicons)")
+    #parser.add_argument("--short", action="store_true",
+    #                    dest="short_mode", default=False,
+    #                    help="mode to assemble shorter sequences (viruses/plasmids/amplicons)")
     parser.add_argument("--keep-haplotypes", action="store_true",
                         dest="keep_haplotypes", default=False,
                         help="do not collapse alternative haplotypes")

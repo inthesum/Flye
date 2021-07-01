@@ -46,8 +46,8 @@ def assemble(args, run_params, out_file, log_file, config_path):
         cmdline.append("--debug")
     if args.meta:
         cmdline.append("--meta")
-    if args.short_mode:
-        cmdline.append("--short")
+    #if args.short_mode:
+    #    cmdline.append("--short")
     if args.genome_size:
         cmdline.extend(["--genome-size", str(args.genome_size)])
     #if args.kmer_size:
