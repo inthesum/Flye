@@ -45,8 +45,8 @@ vals = {
             "pacbio" : {
                 "subs_matrix" : "config/bin_cfg/pacbio_chm13_substitutions.mat",
                 "hopo_matrix" : "config/bin_cfg/pacbio_chm13_homopolymers.mat",
-                "solid_missmatch" : 0.2,
-                "solid_indel" : 0.2,
+                "solid_missmatch" : 0.3,
+                "solid_indel" : 0.3,
                 "max_aln_error" : 0.25,
                 "hopo_enabled" : False
             },
