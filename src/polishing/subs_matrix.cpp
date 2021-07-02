@@ -149,12 +149,18 @@ HopoMatrix::State::State(const std::string& str, size_t start, size_t end)
 
 	//std::cerr << str.substr(start, end - start) << std::endl;
 	size_t runLength = 0;
-	char runNucl = -1;
+	char runNucl = 0;
+	bool nuclInit = false;
+	
 	for (size_t i = start; i < end; ++i)
 	{
 		if (str[i] != '-')
 		{
-			if (runNucl == -1) runNucl = str[i];
+			if (!nuclInit)
+			{
+				runNucl = str[i];
+				nuclInit = true;
+			}
 			if (str[i] != runNucl) throw std::runtime_error("Wrong homopolymer");
 			++runLength;
 		}
