@@ -738,6 +738,7 @@ void OverlapContainer::filterOverlaps()
 			}
 			newOvlps.push_back(*maxOvlp);
 		}
+		newOvlps.shrink_to_fit();
 		overlaps = std::move(newOvlps);
 
 		std::sort(overlaps.begin(), overlaps.end(), 
