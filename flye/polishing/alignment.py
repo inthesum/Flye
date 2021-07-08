@@ -236,6 +236,7 @@ def _run_minimap(reference_file, reads_files, num_proc, mode, out_file,
     stderr_file = os.path.join(work_dir, "minimap.stderr")
     SORT_THREADS = "4"
     SORT_MEM = "4G" if os.path.getsize(reference_file) > 100 * 1024 * 1024 else "1G"
+    BATCH = "5G" if os.path.getsize(reference_file) > 100 * 1024 * 1024 else "1G"
 
     cmdline = [MINIMAP_BIN, "'" + reference_file + "'"]
     cmdline.extend(["'" + read_file + "'" for read_file in reads_files])
@@ -253,7 +254,7 @@ def _run_minimap(reference_file, reads_files, num_proc, mode, out_file,
     if sam_output:
         tmp_prefix = os.path.join(os.path.dirname(out_file),
                                   "sort_" + datetime.datetime.now().strftime("%y%m%d_%H%M%S"))
-        cmdline.extend(["-a", "-p", "0.5", "-N", "10", "--sam-hit-only", "-L",
+        cmdline.extend(["-a", "-p", "0.5", "-N", "10", "--sam-hit-only", "-L", "-K", BATCH,
                         "-z", "1000", "-Q", "--secondary-seq", "-I", "64G"])
         cmdline.extend(["|", SAMTOOLS_BIN, "view", "-T", "'" + reference_file + "'", "-u", "-"])
         cmdline.extend(["|", SAMTOOLS_BIN, "sort", "-T", "'" + tmp_prefix + "'", "-O", "bam",
