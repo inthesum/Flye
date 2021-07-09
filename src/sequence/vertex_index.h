@@ -70,9 +70,9 @@ public:
 	{
 		this->clear();
 	}
-	VertexIndex(const SequenceContainer& seqContainer, float sampleRate):
+	VertexIndex(const SequenceContainer& seqContainer):
 		_seqContainer(seqContainer), _outputProgress(false), 
-		_sampleRate(sampleRate), _repetitiveFrequency(0),
+		_sampleRate(1.0f), _repetitiveFrequency(0),
 		_kmerCounter(seqContainer)
 		//_solidMultiplier(1)
 		//_flankRepeatSize(flankRepeatSize)

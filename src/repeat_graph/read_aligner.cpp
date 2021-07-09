@@ -175,8 +175,7 @@ void ReadAligner::alignReads()
 	}
 
 	//index it and align reads
-	VertexIndex pathsIndex(_graph.edgeSequences(), 
-						   (int)Config::get("read_align_kmer_sample"));
+	VertexIndex pathsIndex(_graph.edgeSequences());
 	bool useMinimizers = Config::get("use_minimizers");
 	int minWnd = useMinimizers ? Config::get("minimizer_window") : 1;
 	pathsIndex.buildIndexMinimizers(/*min freq*/ 1, minWnd);

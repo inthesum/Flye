@@ -71,7 +71,7 @@ std::unordered_set<GraphEdge*> GraphEdge::adjacentEdges()
 void RepeatGraph::build()
 {
 	//getting overlaps
-	VertexIndex asmIndex(_asmSeqs, (int)Config::get("repeat_graph_kmer_sample"));
+	VertexIndex asmIndex(_asmSeqs);
 
 	bool useMinimizers = Config::get("use_minimizers");
 	int minWnd = useMinimizers ? Config::get("minimizer_window") : 1;

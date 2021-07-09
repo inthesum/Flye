@@ -132,7 +132,7 @@ void removeContainedDisjointigs(std::vector<FastaRecord>& disjointigs,
 	for (auto& disj : disjointigs) disjSequences.addSequence(disj.sequence, disj.description);
 	disjSequences.buildPositionIndex();
 
-	VertexIndex vertIndex(disjSequences, (int)Config::get("assemble_kmer_sample"));
+	VertexIndex vertIndex(disjSequences);
 	bool useMinimizers = Config::get("use_minimizers");
 	int minWnd = useMinimizers ? Config::get("minimizer_window") : 1;
 	vertIndex.buildIndexMinimizers(/*min freq*/ 1, minWnd);
@@ -259,8 +259,7 @@ int assemble_main(int argc, char** argv)
 		return 1;
 	}
 	readsContainer.buildPositionIndex();
-	VertexIndex vertexIndex(readsContainer, 
-							(int)Config::get("assemble_kmer_sample"));
+	VertexIndex vertexIndex(readsContainer);
 	vertexIndex.outputProgress(true);
 
 	/*int64_t sumLength = 0;
