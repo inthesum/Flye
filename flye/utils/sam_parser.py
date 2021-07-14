@@ -427,6 +427,52 @@ class SynchronizedSamReader(object):
 
         return alignments
 
+    def get_all_alignments(self):
+        aln_file = subprocess.Popen("{0} view {1}".format(SAMTOOLS_BIN, self.aln_path),
+                                    shell=True, stdout=subprocess.PIPE).stdout
+
+        alignments = []
+        for line in aln_file:
+            tokens = line.strip().split()
+            if len(tokens) < 11:
+                #raise AlignmentException("Error reading SAM file")
+                continue
+
+            flags = int(tokens[1])
+            is_unmapped = flags & 0x4
+            is_secondary = flags & 0x100
+            is_supplementary = flags & 0x800
+            is_reversed = flags & 0x16
+
+            if is_unmapped: continue
+            if is_secondary and not self.use_secondary: continue
+
+            read_id = tokens[0]
+            parsed_contig = tokens[2]
+            cigar_str = tokens[5]
+            read_str = tokens[9]
+            map_qv = int(tokens[4])
+            ctg_pos = int(tokens[3])
+
+            if read_str == b"*":
+                continue
+                #raise Exception("Error parsing SAM: record without read sequence")
+
+            contig_str = self.ref_fasta[parsed_contig]
+
+            (trg_start, trg_end, trg_len, trg_seq,
+            qry_start, qry_end, qry_len, qry_seq, err_rate) = \
+                    self._parse_cigar(cigar_str, read_str, contig_str, ctg_pos)
+
+            aln = Alignment(_STR(read_id), _STR(parsed_contig),
+                            qry_start, qry_end, "-" if is_reversed else "+", qry_len,
+                            trg_start, trg_end, "+", trg_len,
+                            _STR(qry_seq), _STR(trg_seq), err_rate,
+                            is_secondary, is_supplementary, map_qv)
+            alignments.append(aln)
+
+        return alignments
+
 
 #def _is_sam_header(line):
 #    return line[:3] in [b"@PG", b"@HD", b"@SQ", b"@RG", b"@CO"]

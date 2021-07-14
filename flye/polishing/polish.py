@@ -161,16 +161,18 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
     aln_by_edge = defaultdict(list)
 
     #getting one best alignment for each contig
-    for ctg in polished_dict:
-        ctg_aln = aln_reader.get_alignments(ctg)
-        for aln in ctg_aln:
-            aln_by_edge[aln.qry_id].append(aln)
+    #for ctg in polished_dict:
+    #    ctg_aln = aln_reader.get_alignments(ctg)
+    for aln in aln_reader.get_all_alignments():
+        aln_by_edge[aln.qry_id].append(aln)
+    #logger.debug("Bam parsing done")
 
     MIN_CONTAINMENT = 0.9
     updated_seqs = 0
     edges_dict = fp.read_sequence_dict(edges_file)
     for edge in edges_dict:
         if edge in aln_by_edge:
+            aln_by_edge[edge].sort(key=lambda a: a.qry_end - a.qry_start, reverse=True)
             main_aln = aln_by_edge[edge][0]
             map_start = main_aln.trg_start
             map_end = main_aln.trg_end
@@ -183,7 +185,7 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
             if main_aln.qry_sign == "-":
                 new_seq = fp.reverse_complement(new_seq)
 
-            #print edge, main_aln.qry_len, len(new_seq), main_aln.qry_start, main_aln.qry_end
+            #print(edge, main_aln.qry_len, len(new_seq), main_aln.qry_start, main_aln.qry_end)
             if len(new_seq) / aln.qry_len > MIN_CONTAINMENT:
                 edges_dict[edge] = new_seq
                 updated_seqs += 1
