@@ -27,7 +27,7 @@ vals = {
             "hifi" : [1000, 10000],
             "subasm" : [1000, 1000]
         },
-        "max_meta_overlap" : 3000,
+        "max_meta_overlap" : 10000,
 
         #polishing
         "simple_kmer_length" : 4,
