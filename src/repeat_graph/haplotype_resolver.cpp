@@ -537,7 +537,7 @@ int HaplotypeResolver::findRoundabouts()
 		if (newVariant)
 		{
 			++foundNew;
-			Logger::get().debug() << "Rounabout: " 
+			Logger::get().debug() << "Roundabout: " 
 				<< varSegment.startEdge->edgeId.signedId()
 				<< " : " << varSegment.endEdge->edgeId.signedId();
 		}
@@ -569,7 +569,7 @@ int HaplotypeResolver::findRoundabouts()
 		_bridgingSeqs[revPair] = varSegment.bridgingSequence.complement();
 	}
 
-	Logger::get().debug() << "[SIMPL] Masked " << foundNew << " complex haplotypes";
+	Logger::get().debug() << "[SIMPL] Masked " << foundNew << " roundabouts";
 	return foundVariants.size();
 }
 
