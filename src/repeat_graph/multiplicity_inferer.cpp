@@ -136,52 +136,6 @@ int MultiplicityInferer::resolveForks()
 	return numDisconnected;
 }
 
-//Masks out edges with low coverage (but not removes them)
-/*int MultiplicityInferer::maskUnsupportedEdges()
-{
-
-	GraphProcessor proc(_graph, _asmSeqs);
-	auto unbranchingPaths = proc.getUnbranchingPaths();
-
-	int32_t coverageThreshold = 0;
-	const int MIN_CUTOFF = std::round((float)Config::get("min_read_cov_cutoff"));
-	if (!Parameters::get().unevenCoverage)
-	{
-		coverageThreshold = std::round((float)this->getMeanCoverage() / 
-										Config::get("graph_cov_drop_rate"));
-		coverageThreshold = std::max(MIN_CUTOFF, coverageThreshold);
-	}
-	else
-	{
-		coverageThreshold = MIN_CUTOFF;
-	}
-	Logger::get().debug() << "Read coverage cutoff: " << coverageThreshold;
-
-	int numMasked = 0;
-	for (auto& path : unbranchingPaths)
-	{
-		if (!path.id.strand()) continue;
-
-		//it's a dead end
-		//if (path.nodeRight()->outEdges.size() > 0) continue;
-
-		if (path.meanCoverage < coverageThreshold)
-		{
-			//Logger::get().debug() << "Low coverage: " 
-			//	<< path.edgesStr() << " " << path.meanCoverage;
-			for (auto& edge : path.path)
-			{
-				edge->unreliable = true;
-				_graph.complementEdge(edge)->unreliable = true;
-			}
-			++numMasked;
-		}
-	}
-	Logger::get().debug() << "[SIMPL] Masked " << numMasked
-		<< " paths with low coverage";
-
-	return numMasked;
-}*/
 
 //removes the edges with low coverage, with an option to
 //only remove tips
@@ -384,20 +338,20 @@ int MultiplicityInferer::splitNodes()
 		if (clusters.size() > 1)	//need to split the node!
 		{
 			numSplit += 1;
-			Logger::get().debug() << "Node " 
-				<< nodeToSplit->inEdges.size() + nodeToSplit->outEdges.size()
-				<< " clusters: " << clusters.size() << " " << selfComplNode;
+			//Logger::get().debug() << "Node " 
+			//	<< nodeToSplit->inEdges.size() + nodeToSplit->outEdges.size()
+			//	<< " clusters: " << clusters.size() << " " << selfComplNode;
 
-			for (auto& cl : clusters)
-			{
-				Logger::get().debug() << "\tCl: " << cl.second.size();
-				for (auto edgeDir : cl.second)
-				{
-					Logger::get().debug() << "\t\t" << edgeDir.edge->edgeId.signedId() << " " 
-						<< edgeDir.edge->length() << " " << edgeDir.edge->meanCoverage << " "
-						<< edgeDir.isInput;
-				}
-			}
+			//for (auto& cl : clusters)
+			//{
+				//Logger::get().debug() << "\tCl: " << cl.second.size();
+				//for (auto edgeDir : cl.second)
+				//{
+				//	Logger::get().debug() << "\t\t" << edgeDir.edge->edgeId.signedId() << " " 
+				//		<< edgeDir.edge->length() << " " << edgeDir.edge->meanCoverage << " "
+				//		<< edgeDir.isInput;
+				//}
+			//}
 
 			for (auto& cl : clusters)
 			{
