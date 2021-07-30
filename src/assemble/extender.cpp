@@ -130,8 +130,9 @@ Extender::ExtensionInfo Extender::extendDisjointig(FastaRecord::Id startRead)
 
 			const std::vector<OverlapRange>& extOverlaps = _ovlpContainer.lazySeqOverlaps(ovlp.extId);
 
+			const float MAX_COVERAGE_DROP = 5.0f;
 			if (_chimDetector.isChimeric(ovlp.extId, extOverlaps) &&
-				_chimDetector.maxCoverageDrop(ovlp.extId, extOverlaps) > 5.0) continue;
+				_chimDetector.maxCoverageDrop(ovlp.extId, extOverlaps) > MAX_COVERAGE_DROP) continue;
 
 			//optimistically, pick the first available highly reliable extenion (which will
 			//also be with the longest overlap as extensions are sorted based on that)
