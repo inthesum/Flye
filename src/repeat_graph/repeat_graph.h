@@ -127,6 +127,17 @@ struct GraphEdge
 		return sumLen / seqSegments.size();
 	}
 
+	std::string edgeDescrLong() const
+	{
+		return "{" + std::to_string(edgeId.signedId()) + "," + std::to_string(length()) + 
+			    "," + std::to_string(meanCoverage) + "}";
+	}
+
+	std::string edgeDescr() const
+	{
+		return std::to_string(edgeId.signedId());
+	}
+
 	std::unordered_set<GraphEdge*> adjacentEdges();
 
 	/////////////////////////

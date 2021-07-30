@@ -98,17 +98,9 @@ int HaplotypeResolver::findHeterozygousBulges()
 		GraphEdge* inEdge = entrancePath->path.back();
 		GraphEdge* outEdge = exitPath->path.front();
 
-		Logger::get().debug() << "Regular bubble: " << inEdge->edgeId.signedId()
-			<< " " << outEdge->edgeId.signedId();
-		std::string pathStr;
-		for (size_t i = 0; i < 2; ++i)
-		{
-			for (auto& edge : twoPaths[i]->path)
-			{
-				pathStr += std::to_string(edge->edgeId.signedId()) + " -> ";
-			}
-		}
-		Logger::get().debug() << "\tInternal: " << pathStr;
+		Logger::get().debug() << "Regular bubble: " << inEdge->edgeDescrLong()
+			<< " " << outEdge->edgeDescrLong();
+		Logger::get().debug() << "\tInternal: " << twoPaths[0]->edgesStrLong() << " " << twoPaths[1]->edgesStrLong();
 
 		if (inEdge->rightLink || outEdge->leftLink) continue;
 
@@ -194,8 +186,9 @@ int HaplotypeResolver::findHeterozygousLoops()
 		GraphEdge* outEdge = exitPath->path.front();
 		if (inEdge->rightLink || outEdge->leftLink) continue;
 
-		Logger::get().debug() << "Bubble-loop: " << inEdge->edgeId.signedId()
-			<< " " << outEdge->edgeId.signedId();
+		Logger::get().debug() << "Bubble-loop: " << inEdge->edgeDescrLong()
+			<< " " << outEdge->edgeDescrLong();
+		Logger::get().debug() << "\tInternal: " <<  loop.edgesStrLong();
 
 		//links
 		_graph.linkEdges(inEdge, outEdge);
@@ -538,8 +531,18 @@ int HaplotypeResolver::findRoundabouts()
 		{
 			++foundNew;
 			Logger::get().debug() << "Roundabout: " 
-				<< varSegment.startEdge->edgeId.signedId()
-				<< " : " << varSegment.endEdge->edgeId.signedId();
+				<< varSegment.startEdge->edgeDescrLong()
+				<< " : " << varSegment.endEdge->edgeDescrLong();
+
+			std::string pathStr;
+			for (auto& branch : varSegment.altPaths)
+			{
+				for (size_t i = 1; i < branch.path.size() - 1; ++i)
+				{
+					pathStr += branch.path[i].edge->edgeDescrLong() + " ";
+				}
+			}
+			Logger::get().debug() << "\tInternal: " << pathStr;
 		}
 
 		for (auto& branch : varSegment.altPaths)
@@ -770,7 +773,6 @@ namespace
 	{
 		DijkstraResult(): failure(false) {}
 		std::unordered_map<GraphEdge*, int> dist;
-		//std::unordered_map<GraphEdge*, GraphEdge*> prev;
 		bool failure;
 	};
 	struct EdgeWithPriority 
@@ -778,8 +780,6 @@ namespace
 		GraphEdge* edge; 
 		int priority;
 	};
-	//auto lowestPri = [](EdgeWithPriority& e1, EdgeWithPriority& e2)
-	//	{return e1.priority > e2.priority;};
 	auto lowestPri = [](const EdgeWithPriority& e1, const EdgeWithPriority& e2)
 		{return e1.priority != e2.priority ? 
 				e1.priority > e2.priority : e1.edge > e2.edge;};
@@ -793,23 +793,13 @@ namespace
 		outRes.dist.clear();
 		outRes.failure = false;
 		outRes.dist[source] = 0;
-		//std::priority_queue<EdgeWithPriority, 
-		//					std::vector<EdgeWithPriority>, 
-		//					decltype(lowestPri)> queue(lowestPri);
-		//queue.push({source, 0});
 		std::set<EdgeWithPriority, decltype(lowestPri)> queue(lowestPri);
 		queue.insert({source, 0});
-		//std::unordered_set<GraphEdge*> closed;
 
 		while (!queue.empty())
 		{
-			//auto curEdge = queue.top();
-			//queue.pop();
 			auto curEdge = *queue.begin();
 			queue.erase(queue.begin());
-
-			//if (closed.count(curEdge.edge)) continue;
-			//closed.insert(curEdge.edge);
 
 			//dead end
 			if (curEdge.edge->nodeRight->outEdges.empty()) 
@@ -843,7 +833,6 @@ namespace
 					{
 						queue.erase({nextEdge, outRes.dist[nextEdge]});
 						queue.insert({nextEdge, newDist});
-						//queue.push({nextEdge, newDist});
 					}
 					outRes.dist[nextEdge] = newDist;
 				}
@@ -877,41 +866,12 @@ namespace
 		}
 		Logger::get().debug() << "\t\tReference path: " << pathStr;*/
 
-		/*auto discoverableEdges = getDiscoverable(startEdge, maxBubbleLen);
-		if (discoverableEdges.dist.empty()) return Superbubble();
-		std::vector<GraphEdge*> endCandidates;
-		for (auto& discovIter : discoverableEdges.dist) 
-		{
-			endCandidates.push_back(discovIter.first);
-		}
-		std::sort(endCandidates.begin(), endCandidates.end(),
-				  [&discoverableEdges](GraphEdge* e1, GraphEdge* e2)
-				  	{return discoverableEdges.dist[e1] < discoverableEdges.dist[e2];});*/
-
-		//for (GraphEdge* endCand : endCandidates)
 		for (GraphEdge* endCand : refPath)
 		{
 			if (endCand == startEdge) continue;
 			if (loopedEdges.count(endCand)) continue;
 			if (!endCand->nodeLeft->isBifurcation()) continue;
 			//if (endCand->nodeLeft->inEdges.size() < 2) continue;
-
-			/*int numIn = 0;
-			int numOut = 0;
-			for (auto& edge : endCand->nodeLeft->inEdges)
-			{
-				if (!loopedEdges.count(edge)) ++numIn;
-			}
-			for (auto& edge : endCand->nodeLeft->outEdges)
-			{
-				if (!loopedEdges.count(edge)) ++numOut;
-			}
-			if (numOut > 1 || numIn < 2) continue;*/
-			//if (endCand->nodeLeft->outEdges.size() > 1 ||
-			//	endCand->nodeLeft->inEdges.size() < 2) continue;
-
-			//Logger::get().debug() << "\t\tEnd check: " 
-			//	<< endCand->edgeId.signedId();
 
 			static DijkstraResult distancesFromSource;
 			getShortestPathsLen(startEdge, endCand, maxBubbleLen, 
@@ -974,27 +934,8 @@ namespace
 				}
 			}
 
-			//check if one cannot reach source from sink (fwd direction)
-			//if (hasPath(endCand, startEdge, maxBubbleLen)) goodBubble = false;
-			//if (hasPath(graph.complementEdge(startEdge), 
-			//			graph.complementEdge(endCand), maxBubbleLen)) goodBubble = false;
-			//if (hasPath(startEdge, startEdge, maxBubbleLen)) goodBubble = false;
-			//if (hasPath(endCand, endCand, maxBubbleLen)) goodBubble = false;
-
 			if (goodBubble)
 			{
-				//trace back reference path
-				/*GraphPath refPath;
-				GraphEdge* curEdge = endCand;
-				refPath.push_back(curEdge);
-				do
-				{
-					curEdge = discoverableEdges.prev[curEdge];
-					refPath.push_back(curEdge);
-				}
-				while (curEdge != startEdge);
-				std::reverse(refPath.begin(), refPath.end());*/
-
 				Superbubble sb;
 				sb.start = startEdge;
 				sb.end = endCand;
@@ -1116,14 +1057,14 @@ int HaplotypeResolver::findSuperbubbles()
 												pathSeq.complement();
 		//
 
-		Logger::get().debug() << "\tSuperbubble: " << startEdge->edgeId.signedId()
-			<< " " << fwdBubble.end->edgeId.signedId();
+		Logger::get().debug() << "Superbubble: " << startEdge->edgeDescrLong()
+			<< " " << fwdBubble.end->edgeDescrLong();
 		std::string pathStr;
 		for (auto& edge : fwdBubble.internalEdges)
 		{
-			pathStr += std::to_string(edge->edgeId.signedId()) + " ";
+			pathStr += edge->edgeDescrLong() + " ";
 		}
-		Logger::get().debug() << "\t\tInternal: " << pathStr;
+		Logger::get().debug() << "\tInternal: " << pathStr;
 
 		/*if (startEdge->nodeRight->inEdges.size() > 1 ||
 			fwdBubble.end->nodeLeft->outEdges.size() > 1)

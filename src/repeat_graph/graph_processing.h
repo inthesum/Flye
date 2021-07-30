@@ -40,7 +40,21 @@ struct UnbranchingPath
 		std::string contentsStr;
 		for (auto& edge : path)
 		{
-			contentsStr += std::to_string(edge->edgeId.signedId()) + " -> ";
+			contentsStr += edge->edgeDescr() + " -> ";
+		}
+
+		contentsStr.erase(contentsStr.size() - 4);
+		return contentsStr;
+	}
+
+	std::string edgesStrLong() const
+	{
+		if (path.empty()) return "";
+
+		std::string contentsStr;
+		for (auto& edge : path)
+		{
+			contentsStr += edge->edgeDescrLong() + " -> ";
 		}
 
 		contentsStr.erase(contentsStr.size() - 4);
