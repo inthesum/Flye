@@ -11,6 +11,7 @@
 #include "../common/utils.h"
 #include "../common/parallel.h"
 #include "../common/disjoint_set.h"
+#include "../common/utils.h"
 
 #include <lemon/list_graph.h>
 #include <lemon/matching.h>
@@ -192,21 +193,24 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 {
 	std::unordered_map<GraphEdge*, std::vector<int>> outFlanks;
 	std::unordered_map<GraphEdge*, std::vector<int>> outSpans;
-	int lowerBound = 0;
+
+	std::vector<GraphAlignment> hangingPaths;
+	std::unordered_map<GraphEdge*, std::vector<GraphEdge*>> visitedEdges;
+
 	for (auto& aln : alignments)
 	{ 
 		bool passedStart = false;
 		int leftFlank = 0;
 		int leftCoord = 0;
 		bool foundUnique = false;
+		size_t startIndex = 0;
+
 		for (size_t i = 0; i < aln.size(); ++i)
 		{
-			 //only high quality flanking alignments
-			//if (aln[i].overlap.seqDivergence > 0.15) continue;
-
 			if (!passedStart && aln[i].edge == checkEdge)
 			{
 				passedStart = true;
+				startIndex = i;
 				leftFlank = aln[i].overlap.curEnd - aln[0].overlap.curBegin;
 				leftCoord = aln[i].overlap.curEnd;
 				continue;
@@ -221,6 +225,11 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 					int alnSpan = aln[i].overlap.curBegin - leftCoord;
 					outFlanks[aln[i].edge].push_back(std::min(leftFlank, rightFlank));
 					outSpans[aln[i].edge].push_back(alnSpan);
+
+					for (size_t j = startIndex + 1; j < i; ++j)
+					{
+						visitedEdges[aln[i].edge].push_back(aln[j].edge);
+					}
 				}
 				foundUnique = true;
 				break;
@@ -228,18 +237,23 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 		}
 		if (!foundUnique)
 		{
-			lowerBound = std::max(lowerBound, 
-								  aln.back().overlap.curBegin - leftCoord);
+			if (aln.size() > startIndex + 1)
+			{
+				hangingPaths.push_back(GraphAlignment(aln.begin() + startIndex + 1,
+													  aln.end()));
+			}
 		}
 	}
 
 	//check if there is agreement
 	int maxSupport = 0;
+	GraphEdge* maxConn = nullptr;
 	for (auto& outConn : outFlanks)
 	{
 		if (maxSupport < (int)outConn.second.size())
 		{
 			maxSupport = outConn.second.size();
+			maxConn = outConn.first;
 		}
 	}
 
@@ -256,12 +270,11 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 			++uniqueMult;
 		}
 	}
-	
+
 	if (uniqueMult > 1) 
 	{
 		Logger::get().debug() << "Starting " 
-			<< checkEdge->edgeId.signedId() << " aln:" << alignments.size()
-			<< " minSpan:" << lowerBound;
+			<< checkEdge->edgeId.signedId() << " aln:" << alignments.size();
 		for (auto& outEdgeCount : outFlanks)
 		{
 			int maxFlank = *std::max_element(outEdgeCount.second.begin(),
@@ -276,8 +289,91 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 				<< outEdgeCount.first->edgeId.signedId() << "\tnum:" << outEdgeCount.second.size()
 				<< "\tflank:" << maxFlank << "\tspan:" << minSpan;
 		}
+
 		return true;
 	}
+
+	//if two unique edge candidates are found, perform an additional consistency check.
+	const size_t MIN_SPAN_TO_CHECK = 5;
+	if (uniqueMult == 1 && maxConn && outSpans[maxConn].size() > MIN_SPAN_TO_CHECK)
+	{
+		return this->checkPathConsistency(checkEdge, maxConn, visitedEdges, outSpans, hangingPaths);
+	}
+
+	return false;
+}
+
+
+bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge* maxConn,
+										  std::unordered_map<GraphEdge*, std::vector<GraphEdge*>> visitedEdges,
+										  std::unordered_map<GraphEdge*, std::vector<int>> outSpans,
+										  std::vector<GraphAlignment> hangingPaths)
+{
+	const size_t MIN_FREQ_RATE = 5;
+	const int MIN_UNSAFE_DEVIATION = 5000;
+	const int INCONSISTENT_HANG_RATE = 2;
+
+	Logger::get().debug() << "SuspiciousOverhangs: " << checkEdge->edgeId.signedId();
+	Logger::get().debug() << "\tSpanning: " << outSpans[maxConn].size() << " median: " 
+		<< median(outSpans[maxConn]) << " max: " << *std::max_element(outSpans[maxConn].begin(), outSpans[maxConn].end());
+	Logger::get().debug() << "\tHanging: " << hangingPaths.size();
+
+	//construct a set of safe edges, definted by the read paths between the two uniqe edge candidates
+	int minSafeFreq = std::max(outSpans[maxConn].size() / MIN_FREQ_RATE, 1UL);
+	std::unordered_map<GraphEdge*, int> safeEdgesFrequencies;
+	for (auto edge : visitedEdges[maxConn])
+	{
+		++safeEdgesFrequencies[edge];
+	}
+
+	Logger::get().debug() << "\tSafe eges";
+	for (auto edgeIt : safeEdgesFrequencies)
+	{
+		Logger::get().debug() << "\t\t" << edgeIt.first->edgeId.signedId() << " " << edgeIt.second;
+	}
+
+	//for each hanging path, count how many edges differ from the set of safe edges
+	size_t inconsistentHangs = 0;
+	const int MIN_CUTOFF = std::round((float)Config::get("min_read_cov_cutoff"));
+	for (auto& aln : hangingPaths)
+	{
+		std::unordered_set<GraphEdge*> unsafeEdges;
+		for (auto& ovlp : aln)
+		{
+			if (safeEdgesFrequencies[ovlp.edge] < minSafeFreq)
+			{
+				if (ovlp.edge->meanCoverage >= MIN_CUTOFF &&
+					!ovlp.edge->altHaplotype)
+				{
+					unsafeEdges.insert(ovlp.edge);
+				}
+			}
+		}
+
+		int unsafeDist = 0;
+		for (auto& edge : unsafeEdges) unsafeDist += edge->length();
+		if (unsafeDist > MIN_UNSAFE_DEVIATION) ++inconsistentHangs;
+		if (!unsafeEdges.empty())
+		{
+			Logger::get().debug() << "\tInconsistent " << aln.back().overlap.curEnd - aln.front().overlap.curBegin 
+				<< " " << unsafeEdges.size() << " " << unsafeDist;
+			for (auto& ovlp : aln)
+			{
+				if (safeEdgesFrequencies[ovlp.edge] < minSafeFreq)
+				{
+					Logger::get().debug() << "\t\t" << ovlp.edge->edgeId.signedId() 
+						<< " " << ovlp.edge->length() << " " << ovlp.edge->meanCoverage;
+				}
+			}
+		}
+	}
+
+	if (inconsistentHangs > outSpans[maxConn].size() / INCONSISTENT_HANG_RATE)
+	{
+		Logger::get().debug() << "\t^Flagged!";
+		return true;
+	}
+	
 	return false;
 }
 

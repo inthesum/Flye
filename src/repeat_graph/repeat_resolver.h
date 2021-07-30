@@ -56,6 +56,11 @@ private:
 	int  resolveConnections(const std::vector<Connection>& conns, 
 							float minSupport);
 
+	bool checkPathConsistency(const GraphEdge* checkEdge, GraphEdge* maxConn,
+							  std::unordered_map<GraphEdge*, std::vector<GraphEdge*>> visitedEdges,
+							  std::unordered_map<GraphEdge*, std::vector<int>> outSpans,
+							  std::vector<GraphAlignment> hangingPaths);
+
 	RepeatGraph& _graph;
 	const SequenceContainer&   _asmSeqs;
 	const SequenceContainer&   _readSeqs;
