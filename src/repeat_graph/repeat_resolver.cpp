@@ -226,7 +226,7 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 					outFlanks[aln[i].edge].push_back(std::min(leftFlank, rightFlank));
 					outSpans[aln[i].edge].push_back(alnSpan);
 
-					for (size_t j = startIndex + 1; j < i; ++j)
+					for (size_t j = startIndex + 1; j < aln.size(); ++j)
 					{
 						visitedEdges[aln[i].edge].push_back(aln[j].edge);
 					}
@@ -509,18 +509,6 @@ void RepeatResolver::findRepeats()
 				break;
 			}
 		}
-
-		//mask unreliable edges with low coverage
-		/*for (auto& edge : path.path)
-		{
-			if (edge->unreliable)
-			{
-				markRepetitive(&path);
-				markRepetitive(complPath(&path));
-				Logger::get().debug() << "Unreliable: " << path.edgesStr();
-				break;
-			}
-		}*/
 
 		//mask edges that appear multiple times within single reads
 		for (auto& edge : path.path)
