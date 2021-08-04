@@ -293,9 +293,9 @@ bool RepeatResolver::checkByReadExtension(const GraphEdge* checkEdge,
 		return true;
 	}
 
-	//if two unique edge candidates are found, perform an additional consistency check.
-	const size_t MIN_SPAN_TO_CHECK = 5;
-	if (uniqueMult == 1 && maxConn && outSpans[maxConn].size() > MIN_SPAN_TO_CHECK)
+	//if single unique connection candidate is found, perform an additional consistency check.
+	const size_t MIN_SPAN_TO_CHECK = 1;
+	if (uniqueMult == 1 && maxConn && outSpans[maxConn].size() >= MIN_SPAN_TO_CHECK)
 	{
 		return this->checkPathConsistency(checkEdge, maxConn, visitedEdges, outSpans, hangingPaths);
 	}
@@ -311,7 +311,7 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 {
 	const size_t MIN_FREQ_RATE = 5;
 	const int MIN_UNSAFE_DEVIATION = 5000;
-	const int INCONSISTENT_HANG_RATE = 2;
+	const int INCONSISTENT_HANG_RATE = 5;
 
 	Logger::get().debug() << "SuspiciousOverhangs: " << checkEdge->edgeId.signedId();
 	Logger::get().debug() << "\tSpanning: " << outSpans[maxConn].size() << " median: " 
@@ -333,7 +333,7 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 	}
 
 	//for each hanging path, count how many edges differ from the set of safe edges
-	size_t inconsistentHangs = 0;
+	int inconsistentHangs = 0;
 	const int MIN_CUTOFF = std::round((float)Config::get("min_read_cov_cutoff"));
 	for (auto& aln : hangingPaths)
 	{
@@ -368,9 +368,11 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 		}
 	}
 
-	if (inconsistentHangs > outSpans[maxConn].size() / INCONSISTENT_HANG_RATE)
+	//if (inconsistentHangs > outSpans[maxConn].size() / INCONSISTENT_HANG_RATE)
+	int threshold = std::max(checkEdge->meanCoverage / INCONSISTENT_HANG_RATE, 1);
+	if (inconsistentHangs > threshold)
 	{
-		Logger::get().debug() << "\t^Flagged!";
+		Logger::get().debug() << "\t^Flagged! " << inconsistentHangs;
 		return true;
 	}
 	
