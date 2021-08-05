@@ -368,8 +368,8 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 		}
 	}
 
-	//if (inconsistentHangs > outSpans[maxConn].size() / INCONSISTENT_HANG_RATE)
-	int threshold = std::max(checkEdge->meanCoverage / INCONSISTENT_HANG_RATE, 1);
+	//int threshold = std::max(checkEdge->meanCoverage / INCONSISTENT_HANG_RATE, 1);
+	int threshold = std::max((outSpans[maxConn].size() + hangingPaths.size()) / INCONSISTENT_HANG_RATE, 1UL);
 	if (inconsistentHangs > threshold)
 	{
 		Logger::get().debug() << "\t^Flagged! " << inconsistentHangs;
