@@ -259,6 +259,7 @@ def _run_minimap(reference_file, reads_files, num_proc, mode, out_file,
         cmdline.extend(["|", SAMTOOLS_BIN, "view", "-T", "'" + reference_file + "'", "-u", "-"])
         cmdline.extend(["|", SAMTOOLS_BIN, "sort", "-T", "'" + tmp_prefix + "'", "-O", "bam",
                         "-@", SORT_THREADS, "-l", "1", "-m", SORT_MEM])
+        cmdline.extend(["-o", "'" + out_file + "'"])
     else:
         pass    #paf output enabled by default
 
@@ -273,7 +274,7 @@ def _run_minimap(reference_file, reads_files, num_proc, mode, out_file,
         subprocess.check_call(["/bin/bash", "-c",
                               "set -eo pipefail; " + " ".join(cmdline)],
                               stderr=open(stderr_file, "w"),
-                              stdout=open(out_file, "w"))
+                              stdout=open(os.devnull, "w"))
         if sam_output:
             subprocess.check_call(SAMTOOLS_BIN + " index " + "'" + out_file + "'", shell=True)
         #os.remove(stderr_file)
