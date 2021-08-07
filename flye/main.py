@@ -459,13 +459,6 @@ def _create_job_list(args, work_dir, log_file):
         repeat_graph_edges = jobs[-1].out_files["repeat_graph_edges"]
         repeat_graph = jobs[-1].out_files["repeat_graph"]
 
-    #Short plasmids
-    if args.plasmids:
-        logger.warning("--plasmids mode is no longer available. Command line option will be removed in the future versions")
-    #    jobs.append(JobShortPlasmidsAssembly(args, work_dir, disjointigs,
-    #                                         repeat_graph, repeat_graph_edges))
-    #    repeat_graph_edges = jobs[-1].out_files["repeat_graph_edges"]
-    #    repeat_graph = jobs[-1].out_files["repeat_graph"]
 
     #Contigger
     jobs.append(JobContigger(args, work_dir, log_file, repeat_graph_edges,
@@ -818,6 +811,13 @@ def main():
 
     args.asm_config = os.path.join(cfg.vals["pkg_root"],
                                    cfg.vals["bin_cfg"][args.read_type])
+
+    if args.plasmids:
+        logger.warning("--plasmids mode is no longer available. Command line option will be removed in the future versions")
+    if args.trestle:
+        logger.warning("--trestle mode is being deprecated. It will be removed in the future versions.")
+    if args.subassemblies:
+        logger.warning("--subassemblies mode is being deprecated. It will be removed in the future versions.")
 
     try:
         aln.check_binaries()
