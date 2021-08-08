@@ -245,8 +245,11 @@ int repeat_main(int argc, char** argv)
 	markHaplotypes();
 	repResolver.findRepeats();
 	outGen.outputDot(proc.getEdgesPaths(), outFolder + "/graph_before_rr.gv");
-	//outGen.outputGfa(proc.getEdgesPaths(), outFolder + "/graph_before_rr.gfa");
 	outGen.outputFasta(proc.getEdgesPaths(), outFolder + "/graph_before_rr.fasta");
+	if ((bool)Config::get("output_gfa_before_rr"))
+	{
+		outGen.outputGfa(proc.getEdgesPaths(), outFolder + "/graph_before_rr.gfa");
+	}
 
 	if (isMeta) 
 	{
