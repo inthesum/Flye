@@ -313,11 +313,7 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 	const int MIN_UNSAFE_DEVIATION = 5000;
 	const int INCONSISTENT_HANG_RATE = 5;
 
-	Logger::get().debug() << "SuspiciousOverhangs: " << checkEdge->edgeId.signedId();
-	Logger::get().debug() << "\tSpanning: " << outSpans[maxConn].size() << " median: " 
-		<< median(outSpans[maxConn]) << " max: " << *std::max_element(outSpans[maxConn].begin(), outSpans[maxConn].end());
-	Logger::get().debug() << "\tHanging: " << hangingPaths.size();
-
+	
 	//construct a set of safe edges, definted by the read paths between the two uniqe edge candidates
 	int minSafeFreq = std::max(outSpans[maxConn].size() / MIN_FREQ_RATE, 1UL);
 	std::unordered_map<GraphEdge*, int> safeEdgesFrequencies;
@@ -326,11 +322,11 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 		++safeEdgesFrequencies[edge];
 	}
 
-	Logger::get().debug() << "\tSafe eges";
+	/*Logger::get().debug() << "\tSafe eges";
 	for (auto edgeIt : safeEdgesFrequencies)
 	{
 		Logger::get().debug() << "\t\t" << edgeIt.first->edgeId.signedId() << " " << edgeIt.second;
-	}
+	}*/
 
 	//for each hanging path, count how many edges differ from the set of safe edges
 	int inconsistentHangs = 0;
@@ -353,7 +349,7 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 		int unsafeDist = 0;
 		for (auto& edge : unsafeEdges) unsafeDist += edge->length();
 		if (unsafeDist > MIN_UNSAFE_DEVIATION) ++inconsistentHangs;
-		if (!unsafeEdges.empty())
+		/*if (!unsafeEdges.empty())
 		{
 			Logger::get().debug() << "\tInconsistent " << aln.back().overlap.curEnd - aln.front().overlap.curBegin 
 				<< " " << unsafeEdges.size() << " " << unsafeDist;
@@ -365,14 +361,20 @@ bool RepeatResolver::checkPathConsistency(const GraphEdge* checkEdge, GraphEdge*
 						<< " " << ovlp.edge->length() << " " << ovlp.edge->meanCoverage;
 				}
 			}
-		}
+		}*/
 	}
 
 	//int threshold = std::max(checkEdge->meanCoverage / INCONSISTENT_HANG_RATE, 1);
 	int threshold = std::max((outSpans[maxConn].size() + hangingPaths.size()) / INCONSISTENT_HANG_RATE, 1UL);
 	if (inconsistentHangs > threshold)
 	{
-		Logger::get().debug() << "\t^Flagged! " << inconsistentHangs;
+		Logger::get().debug() << "SuspiciousOverhangs: " << checkEdge->edgeId.signedId();
+		Logger::get().debug() << "\tSpanning: " << outSpans[maxConn].size() << " median: " 
+			<< median(outSpans[maxConn]) << " max: " << *std::max_element(outSpans[maxConn].begin(), outSpans[maxConn].end());
+		Logger::get().debug() << "\tHanging: " << hangingPaths.size();
+		Logger::get().debug() << "\tInconsistent: " << inconsistentHangs;
+
+		//Logger::get().debug() << "\t^Flagged! " << inconsistentHangs;
 		return true;
 	}
 	
