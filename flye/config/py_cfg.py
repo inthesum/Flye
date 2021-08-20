@@ -18,6 +18,7 @@ vals = {
             "raw" : "config/bin_cfg/asm_raw_reads.cfg",
             "corrected" : "config/bin_cfg/asm_corrected_reads.cfg",
             "hifi" : "config/bin_cfg/asm_hifi.cfg",
+            "nano_hq" : "config/bin_cfg/asm_nano_hq.cfg",
             "subasm" : "config/bin_cfg/asm_subasm.cfg"
         },
 
@@ -25,6 +26,7 @@ vals = {
             "raw" : [1000, 10000],
             "corrected" : [1000, 10000],
             "hifi" : [1000, 10000],
+            "nano_hq" : [1000, 10000],
             "subasm" : [1000, 1000]
         },
         "max_meta_overlap" : 10000,

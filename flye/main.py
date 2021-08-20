@@ -613,28 +613,24 @@ def _enable_logging(log_file, debug, overwrite):
 
 def _usage():
     return ("flye (--pacbio-raw | --pacbio-corr | --pacbio-hifi | --nano-raw |\n"
-            "\t     --nano-corr | --subassemblies) file1 [file_2 ...]\n"
+            "\t     --nano-corr | --nano-hq ) file1 [file_2 ...]\n"
             "\t     --out-dir PATH\n\n"
             "\t     [--genome-size SIZE] [--threads int] [--iterations int]\n"
-            "\t     [--meta] [--plasmids] [--trestle] [--polish-target]\n"
+            "\t     [--meta] [--polish-target] [--min-overlap SIZE]\n"
             "\t     [--keep-haplotypes] [--debug] [--version] [--help] \n"
             "\t     [--scaffold] [--resume] [--resume-from] [--stop-after] \n"
-            "\t     [--hifi-error float] [--extra-params] [--min-overlap SIZE]")
+            "\t     [--read-error float] [--extra-params]")
 
 
 def _epilog():
     return ("Input reads can be in FASTA or FASTQ format, uncompressed\n"
-            "or compressed with gz. Currently, PacBio (raw, corrected, HiFi)\n"
-            "and ONT reads (raw, corrected) are supported. Expected error rates are\n"
-            "<30% for raw, <3% for corrected, and <1% for HiFi. Note that Flye\n"
-            "was primarily developed to run on raw reads. Additionally, the\n"
-            "--subassemblies option performs a consensus assembly of multiple\n"
-            "sets of high-quality contigs. You may specify multiple\n"
+            "or compressed with gz. Currently, PacBio (CLR, HiFi, corrected)\n"
+            "and ONT reads (raw, HQ, corrected) are supported. Expected error rates are\n"
+            "<20% for CLR/raw ONT, <5% for ONT HQ, <3% for corrected, and <1% for HiFi. Note that Flye\n"
+            "was primarily developed to run on uncorrected reads. You may specify multiple\n"
             "files with reads (separated by spaces). Mixing different read\n"
             "types is not yet supported. The --meta option enables the mode\n"
             "for metagenome/uneven coverage assembly.\n\n"
-            "Genome size estimate is no longer a required option. You\n"
-            "need to provide an estimate if using --asm-coverage option.\n\n"
             "To reduce memory consumption for large genome assemblies,\n"
             "you can use a subset of the longest reads for initial disjointig\n"
             "assembly by specifying --asm-coverage and --genome-size options. Typically,\n"
@@ -676,22 +672,25 @@ def main():
     read_group = parser.add_mutually_exclusive_group(required=True)
     read_group.add_argument("--pacbio-raw", dest="pacbio_raw",
                         default=None, metavar="path", nargs="+",
-                        help="PacBio raw reads")
+                        help="PacBio regular CLR reads (<20%% error)")
     read_group.add_argument("--pacbio-corr", dest="pacbio_corrected",
                         default=None, metavar="path", nargs="+",
-                        help="PacBio corrected reads")
+                        help="PacBio reads that were corrected with other methods (<3%% error)")
     read_group.add_argument("--pacbio-hifi", dest="pacbio_hifi",
                         default=None, metavar="path", nargs="+",
-                        help="PacBio HiFi reads")
+                        help="PacBio HiFi reads (<1%% error)")
     read_group.add_argument("--nano-raw", dest="nano_raw", nargs="+",
                         default=None, metavar="path",
-                        help="ONT raw reads")
+                        help="ONT regular reads, pre-Guppy5 (<20%% error)")
     read_group.add_argument("--nano-corr", dest="nano_corrected", nargs="+",
                         default=None, metavar="path",
-                        help="ONT corrected reads")
+                        help="ONT reads that were corrected with other methods (<3%% error)")
+    read_group.add_argument("--nano-hq", dest="nano_hq", nargs="+",
+                        default=None, metavar="path",
+                        help="ONT high-quality reads: Guppy5+ or Q20 (<5%% error)")
     read_group.add_argument("--subassemblies", dest="subassemblies", nargs="+",
                         default=None, metavar="path",
-                        help="high-quality contigs input")
+                        help="[deprecated] high-quality contigs input")
     parser.add_argument("-g", "--genome-size", dest="genome_size",
                         metavar="size", required=False, default=None,
                         help="estimated genome size (for example, 5m or 2.6g)")
@@ -712,8 +711,9 @@ def main():
                         default=None, help="reduced coverage for initial "
                         "disjointig assembly [not set]", type=int)
     parser.add_argument("--hifi-error", dest="hifi_error", metavar="float",
-                        default=None, help="expected HiFi reads error rate (e.g. 0.01 or 0.001)"
-                        " [0.01]", type=float)
+                        default=None, help="[deprecated] same as --read-error", type=float)
+    parser.add_argument("--read-error", dest="read_error", metavar="float",
+                        default=None, help="adjust parameters for given read error rate (as fraction e.g. 0.03)", type=float)
     parser.add_argument("--extra-params", dest="extra_params",
                         metavar="extra_params", required=False, default=None,
                         help="extra configuration parameters list (comma-separated)")
@@ -723,9 +723,6 @@ def main():
     parser.add_argument("--meta", action="store_true",
                         dest="meta", default=False,
                         help="metagenome / uneven coverage mode")
-    #parser.add_argument("--short", action="store_true",
-    #                    dest="short_mode", default=False,
-    #                    help="mode to assemble shorter sequences (viruses/plasmids/amplicons)")
     parser.add_argument("--keep-haplotypes", action="store_true",
                         dest="keep_haplotypes", default=False,
                         help="do not collapse alternative haplotypes")
@@ -734,7 +731,7 @@ def main():
                         help="enable scaffolding using graph [disabled by default]")
     parser.add_argument("--trestle", action="store_true",
                         dest="trestle", default=False,
-                        help="enable Trestle [disabled by default]")
+                        help="[deprecated] enable Trestle [disabled by default]")
     parser.add_argument("--polish-target", dest="polish_target",
                         metavar="path", required=False,
                         help="run polisher on the target sequence")
@@ -760,19 +757,19 @@ def main():
     if args.asm_coverage and args.meta:
         parser.error("--asm-coverage is incompatible with --meta")
 
-    if args.hifi_error and not args.pacbio_hifi:
-        parser.error("--hifi-error can only be used with --pacbio-hifi")
+    if args.hifi_error and not args.read_error:
+        args.read_error = args.hifi_error
+    if args.read_error and (args.pacbio_raw or args.nano_raw):
+        parser.error("--read-error can only be used with corr/hq/hifi modes")
+    if args.read_error and args.read_error > 1:
+        parser.error("--read-error expressed as a decimal fraction, e.g. 0.01 or 0.03")
 
-    if args.hifi_error:
-        hifi_str = "assemble_ovlp_divergence={0},repeat_graph_ovlp_divergence={0}".format(args.hifi_error)
+    if args.read_error:
+        hifi_str = "assemble_ovlp_divergence={0},repeat_graph_ovlp_divergence={0}".format(args.read_error)
         if args.extra_params:
             args.extra_params += "," + hifi_str
         else:
             args.extra_params = hifi_str
-
-    #if not args.genome_size and not args.polish_target:
-    #    parser.error("Genome size argument (-g/--genome-size) "
-    #                 "is required for assembly")
 
     if args.pacbio_raw:
         args.reads = args.pacbio_raw
@@ -794,6 +791,10 @@ def main():
         args.reads = args.nano_corrected
         args.platform = "nano"
         args.read_type = "corrected"
+    if args.nano_hq:
+        args.reads = args.nano_hq
+        args.platform = "nano"
+        args.read_type = "nano_hq"
     if args.subassemblies:
         args.reads = args.subassemblies
         args.platform = "pacbio"    #arbitrary
