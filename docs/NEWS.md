@@ -1,3 +1,20 @@
+Flye 2.9 release (20 Aug 2022)
+=============================
+* Better assembly of very short sequences (e.g. plasmids or viruses). They vere often missed in previous versions.
+* New --nano-hq mode for ONT Guppy5+ and Q20 reads (3-5% error rate)
+* Optimized default parameters for HiFi (HPC error threshold 0.01 -> 0.001; increased min overlap)
+* Polishing improvements: reduced number of possible clusters of errors
+* Improvements in repeat delection algorithm to further limit a chance of (otherwise infrequent) misassemblies
+* Scaffolding is no longer performed by default (could be enabled with --scaffold)
+* Bam file input for the standalone polisher (same interface as for FASTA/Q)
+* Automatically selected minimum overlap up to 10k (was 5k)
+* Discontinued --plasmid option due to the improvements in short sequences assembly
+* --trestle and --subassemblies modes are now deprecated, and will be removed in the future versions
+* New --extra-params option to modify config-level parameters
+* Contig paths output in Gfa + number of reads supporting each link (RC tag)
+* Update to minimap 2.19
+* Several rare bug fixes/other improvements
+
 Flye 2.8.3 release (10 Feb 2021)
 ===============================
 * Reduced RAM consumption for some ultra-long ONT datasets

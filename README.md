@@ -3,7 +3,7 @@ Flye assembler
 
 [![BioConda Install](https://img.shields.io/conda/dn/bioconda/flye.svg?style=flag&label=BioConda%20install)](https://anaconda.org/bioconda/flye)
 
-### Version: 2.8.3
+### Version: 2.9
 
 Flye is a de novo assembler for single molecule sequencing reads,
 such as those produced by PacBio and Oxford Nanopore Technologies.
@@ -21,6 +21,22 @@ Manuals
 
 Latest updates
 --------------
+
+### Flye 2.9 release (20 Aug 2022)
+* Better assembly of very short sequences (e.g. plasmids or viruses). They vere often missed in previous versions.
+* New --nano-hq mode for ONT Guppy5+ and Q20 reads (3-5% error rate)
+* Optimized default parameters for HiFi (HPC error threshold 0.01 -> 0.001; increased min overlap)
+* Polishing improvements: reduced number of possible clusters of errors
+* Improvements in repeat delection algorithm to further limit a chance of (otherwise infrequent) misassemblies
+* Scaffolding is no longer performed by default (could be enabled with --scaffold)
+* Bam file input for the standalone polisher (same interface as for FASTA/Q)
+* Automatically selected minimum overlap up to 10k (was 5k)
+* Discontinued --plasmid option due to the improvements in short sequences assembly
+* --trestle and --subassemblies modes are now deprecated, and will be removed in the future versions
+* New --extra-params option to modify config-level parameters
+* Contig paths output in Gfa + number of reads supporting each link (RC tag)
+* Update to minimap 2.19
+* Several rare bug fixes/other improvements
 
 ### Flye 2.8.3 release (10 Feb 2021)
 * Reduced RAM consumption for some ultra-long ONT datasets
@@ -44,31 +60,6 @@ This strategy is more robust to drops in coverage/contamination and reqires less
 * Genome size parameter is no longer required (it is still needed for downsampling though `--asm-coverage`)
 * Flye now can occasionally use overlaps shorter than "minOverlap" parameter to close disjointig gaps
 * Various improvements and bugfixes
-
-### Flye 2.7.1. release (24 Apr 2020)
-* Fixes very long GFA generation time for some large assemblies (no other changes)
-
-### Flye 2.7 release (03 Mar 2020)
-* Better assemblies of real (and comlpex) metagenomes
-* New option to retain alternative haplotypes, rather than collapsing them (`--keep-haplotypes`)
-* PacBio HiFi mode
-* Using Bam instead of Sam to reduce storage requirements and IO load
-* Improved human assemblies
-* Annotation of alternative contigs
-* Better polishing quality for the newest ONT datasets
-* Trestle module is disabled by default (use `--trestle` to enable)
-* Many big fixes and improvements
-
-### Flye 2.6 release (19 Sep 2019)
-* This release introduces Python 3 support (no other changes)
-
-### Flye 2.5 release (25 Jul 2019)
-* Better ONT polishing for the latest basecallers (Guppy/flipflop)
-* Improved consensus quality of repetitive regions
-* More contiguous assemblies of real metagenomes
-* Improvements for human genome assemblies
-* Various bugfixes and performance optimizations
-* Also check the new [FAQ section](docs/FAQ.md)
 
 
 Repeat graph
