@@ -134,7 +134,7 @@ Expected error rate is <5%.
 
 ### PacBio
 
-* The default more for regular PacBio CLR data is `--pacbio-raw`. Works for a wide range of
+* The default mode for regular PacBio CLR data is `--pacbio-raw`. Works for a wide range of
 datasets (P5C3/P6C4/Sequel) with error rate 13-15%.
 
 * Note that in CLR mode Flye assumes that the input files represent PacBio subreads, 
@@ -234,6 +234,14 @@ stage (usually the memory bottleneck). The parameter `--asm-coverage`
 specifies the target coverage of the longest reads. Typically, 40x longest reads
 is enough to produce good disjointigs. Regardless of this parameter,
 all reads will be used at the later pipeline stages (e.g. for repeat resolution).
+
+### Running only Flye polisher
+
+To polish an existing assembly, you can run Flye polisher as a standalone tool 
+using --polish-target. Paths to reads are specified similarly to the assembly mode,
+and bam file could also be proveded instead of reads (the mapping stage in this case will
+be skipped).
+
 
 ### Number of polishing iterations
 
