@@ -12,7 +12,7 @@ Flye 2.9 release (20 Aug 2022)
 * --trestle and --subassemblies modes are now deprecated, and will be removed in the future versions
 * New --extra-params option to modify config-level parameters
 * Contig paths output in Gfa + number of reads supporting each link (RC tag)
-* Update to minimap 2.19
+* Update to minimap 2.18
 * Several rare bug fixes/other improvements
 
 Flye 2.8.3 release (10 Feb 2021)
