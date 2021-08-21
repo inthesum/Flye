@@ -5,28 +5,26 @@ Which datasets Flye was tested on?
 ----------------------------------
 
 Flye was extensively tested on various whole genome PacBio and ONT datasets.
-In particular, we used Flye to assemble PacBio's P5C3, P6C4, Sequel and Sequel II;
-ONT's R7-R10 basecalled with Albacore, Guppy and Flipflop (fast mode).
-We typically use raw reads, however error-corrected input is also supported. 
-Flye is designed for all kinds of genomes,
-for various bacteria to mammalians. We are also testing Flye on 
-metagenomic datasets (mock and real). You can also check the table with the Flye 
-benchmarks in the [Usage file](USAGE.md).
+In particular, we used Flye to assemble PacBio's P5C3, P6C4, Sequel and Sequel II, CLR or HiFi;
+ONT's R7-R10 basecalled with Albacore, Guppy and Bonito.
+We typically use regular (uncorrected) reads without any special preparations. 
 
-We have NOT extensively tested Flye on targeted sequencing (not whole meta/genome).
-Also, support of very short sequences, such as viruses, phages, mitochondria
-is limited. On the other hand, assembly of short plasmids IS supported
-through the `--plasmids` option.
+Flye is designed to support various genomes, for viral bacterial to mammalian-scale. 
+Metagenomic datasets are also supported, including real complex communities. 
+You can also check the table with Flye benchmarks in the [Usage file](USAGE.md).
+
+We have NOT extensively tested Flye on targeted sequencing (as opposed to whole genome)
+or local reassembly.
 
 Are diploid genomes supported?
 ------------------------------
 
 Currently Flye does not explicitly support diploid assemblies. If heterzygosity
 is low, it should not be a problem for contiguity; however similar alternative
-haplotypes could be collapsed. Likewise, SNPs and short indels between
+haplotypes could be collapsed. Likewise, SNPs and structural variations between
 the alternative haplotypes will not be captured. If heterozygosity is high,
 Flye will likely recover alternative haplotypes, but will not phase them.
-Because we do not attempt to reconstruct pseudo-haplotypes (like FALCON),
+Because we do not attempt to reconstruct pseudo-haplotypes,
 this will also reduce the overall contiguity.
 
 Are metagenomes supported?
@@ -45,17 +43,25 @@ many human assemblies, which typically require ~450Gb of RAM for ONT and ~140Gb 
 Memory consumption grows linearly with genome size and reads coverage.
 Thus, genomes beyond ~10Gb is size might be problemmatic to assmeble.
 
+Typically, memory requirements are lower for higher quality data (e.g. PacBio HiFi or ONT Hq mode).
+
 Are PacBio CCS/HiFi reads supported?
 -------------------------------
 
 Yes, use the `--pacbio-hifi` option. 
 
+Are there any special parameters/modes for the newest ONT data (Guppy 5+, Q20)?
+-------------------------------------------------------------------------------
+
+Yes, use the new `--nano-hq` mode.
+
 Is Flye suitable for assembly of very short sequences, such as viruses, phages, mitochndria etc.?
 -------------------------------------------------------------------------------------------------
 
-No guarantees. Currently, the support of very short sequences, such as viruses, 
-phages, mitochondria is limited. We expect this to improve in the future versions.
-Assembly of short plasmids *is* supported through the `--plasmids` option.
+Starting the version 2.9 Flye should be much better in capturing very short
+sequences; this is provided that they are covered by at least several reads, 
+singleton reads will not be assembled. It is recommended to use `--meta` mode for
+this kind of input.
 
 How much resources (CPU / RAM) do I need for my genome?
 -------------------------------------------------------
@@ -90,9 +96,9 @@ What is minimum read coverage required for Flye?
 ------------------------------------------------
 
 One can typically get satisfying assembly contiguity
-with 40x+ PacBio / ONT reads, if the read length is
-sufficient. You might need higher coverage to improve
-the consensus quality.
+with 30x+ PacBio / ONT reads, if the read length is
+sufficient (e.g. with N50 of severl kb). 
+You might need higher coverage to improve the consensus quality.
 
 Depending on the technology and read length distribution, 
 you might have success with 20-30x long reads. Assembly
@@ -101,43 +107,24 @@ of datasets with coverage below 10x is not recommended.
 How do I select genome size if I don't know it in advance?
 ----------------------------------------------------------
 
-(Note: genome size parameter is not required since the version 2.8)
+Genome size parameter is no  longer required since the version 2.8.
 
-The genome size estimate is used for solid k-mer selection in the
-initial disjointig assembly stage. Flye is not very sensitive to
-this parameter, and the estimate could be rough.
-It is ok if the parameter is within 0.5x-2x of the actual genome size.
-If the final assembly size is very different from the initial guess,
-consider re-running the pipeline with an updated estimate for
-better results.
 
-An alternative option is to run Flye in `--meta` mode, which uses
-a different approach for solid k-mer selection. This
-mode is almost independent from the genome size parameter
-(you still need to provide an estimate for the selection of
-some other parameters). When assembly is completed,
-you can re-run in the normal mode with the inferred genome size.
-
-I have a lot of reads, but (almost) no sequence was assembled. Why is that?
----------------------------------------------------------------------------
+I have a seemingly sufficient number of reads, but nothing was assembled. Why is that?
+--------------------------------------------------------------------------------------
 
 First, make sure that your dataset type is supported (see above), 
-and the parameters are set correctly. In particular, make sure you 
-are correctly using either raw or corrected reads mode, 
-and the genome size parameter is reasonable.
+and the parameters are set correctly. Please refer to the manual to 
+set the required paameters correctly.
 
 Secondly, make sure that coverage and read length is sufficient.
 Flye generally expects coverage to be more than 10x, and reads
-N90 over 1kb (5kb+ recommended).
+N90 over 1kb (5kb+ recommended). Flye will not work with reads shorter than 1kb.
 
-Another problem with disjointig assembly could be that solid
-k-mers are not properly selected because of some bias / contamination.
-For example, a lot of nonsense (artificial) reads may confuse k-mer
-selection. In this case, you can try the following. First, if you have 
-sufficient read coverage, try to use the `--asm-coverage` option
-to subsample the longest reads, which typically have better quality.
-Secondly, try the `--meta` option that represents an alternative
-k-mer selection strategy.
+If you have verified that Flye configuration is adequate for your dataset
+and the assembly is still empty, it is very likely that there is simply no
+sufficient overlaps between reads to assemble anything! This often happens with
+metagenomic datasets that were sequences with low read depth.
 
 My assembly size / contiguity is not what I expected. What parameters can I tweak to fix it?
 --------------------------------------------------------------------------------------------
@@ -153,19 +140,18 @@ make sure that all *required* parameters are set correctly
 have sufficient quality, coverage and length.
 
 A notable exception is the `--min-overlap` parameter. Intuitively,
-we want keep it as high as possible (e.g. 5kb) to reduce the complexity
+we want keep it as high as possible (e.g. 5-10kb) to reduce the complexity
 of a repeat graph. However, if the read length is not sufficient, 
 this might lead to gaps in assembly. Flye automatically
 selects this parameter based on the read length distribution,
 and for the most of datasets the selected value works well.
 In some rare cases, this parameter needs to be adjusted manually,
-for example if the read length distribution is skewd.
+for example if the read length distribution is skewed.
 
-Currently, the minimum overlap is automatically selected with 
-the 1kb-5kb range. For some datasets (such as ultra-long ONT reads)
-it makes sense to manually increase minimum overlap to 10k.
-We will likely include this as an automatic rule in the 
-future releases.
+Since the version 2.9, Flye has a command-line parameter `--extra-params`
+to override config-level parameters that are not normally exposed to 
+a user. You can experiment at your own risk, we do not provide detailed
+guidelines how to set those.
 
 Can I use both PacBio and ONT reads for assembly?
 -------------------------------------------------
@@ -195,9 +181,9 @@ On the other hand, PacBio has specialized Quiver/Arrow tools that
 are more advanced, since they use PacBio-specific signal information. 
 It is possible, that you can get a bit of improvement after applying these tools.
 
-For ONT data, Flye still has 0.5-1% errors in consensus due to the systematic error 
-pattern of ONT reads. One might need an external polisher 
-(such as nanopolish/Medaka) to get higher consensus quality.
+For the recent ONT data (Guppy4+), Flye often achieves Q30+ quality on verious genomes.
+One can typically push that a bit higher using Medaka or Nanopolish. See
+the recent [Trycycler paper and tool](https://github.com/rrwick/Trycycler) for the discussion.
 
 Illumina correction can fix many of the remaining errors and improve
 the assembly quality for both PacBio and ONT, for example, using Pilon or Racon.
@@ -205,13 +191,12 @@ But it should be applied with caution to prevent over-correction of repetitive r
 Also see [Watson and Warr paper](https://www.nature.com/articles/s41587-018-0004-z) 
 for a discussion on the assembly quality.
 
-Should I use raw or error-corrected reads?
-------------------------------------------
+Should I use regulat or error-corrected reads?
+---------------------------------------------
 
-Flye was primarily designed and tested  using raw reads, so it is always the recommended option.
+Flye was primarily designed and tested  using regular (uncorrected) reads, so it is always the recommended option.
 Should you decide to use error-corrected reads, it might be a good idea to perform another assembly
-using raw read input and compare the results. The only exception is PacBio HiFi reads, 
-which should be assembled using `--pacbio-hifi`.
+using raw read input and compare the results. 
 
 
 Do I need to preprocess my reads in any way?
@@ -245,6 +230,8 @@ polishing using PacBio reads:
 ```
 flye --polish-target SEQ_TO_POLISH --pacbio-raw READS --iterations NUM_ITER --out-dir OUTPUTDIR --threads THREADS
 ```
+
+You can also provide Bam file as input instead of reads, which will skip the read mapping step.
 
 My question is not listed, how do I get help?
 ---------------------------------------------
