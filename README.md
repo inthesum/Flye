@@ -133,7 +133,7 @@ Flye benchmarks
 [cliveome]: https://labs.epi2me.io/cliveome_2010.05/
 [sheep]: https://www.ncbi.nlm.nih.gov/bioproject/?term=PRJNA595610
 
-The assemblies generated using Flye 2.9 could be downloaded from [Zenodo](https://zenodo.org/record/3965035).
+The assemblies generated using Flye 2.9 could be downloaded from [Zenodo](https://doi.org/10.5281/zenodo.5228989).
 All datasets were run with default parameters for the corresponding read type
 with the following exceptions: CHM13 T2T, CHM1 and HG002 were run with `--asm-coverage 50`.
 
