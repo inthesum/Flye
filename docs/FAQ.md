@@ -43,7 +43,7 @@ many human assemblies, which typically require ~450Gb of RAM for ONT and ~140Gb 
 Memory consumption grows linearly with genome size and reads coverage.
 Thus, genomes beyond ~10Gb is size might be problemmatic to assmeble.
 
-Typically, memory requirements are lower for higher quality data (e.g. PacBio HiFi or ONT Hq mode).
+Typically, memory requirements are lower for higher quality data (e.g. PacBio HiFi or ONT HQ mode).
 
 Are PacBio CCS/HiFi reads supported?
 -------------------------------
@@ -175,13 +175,12 @@ Do I still need Illumina polishing or long-read polishing is good enough?
 
 It is a somewhat difficult question to answer. Flye does include
 polishing step, and it producing high quality consensus on bacterial
-PacBio datasets with high coverage. For example, see this recent 
+PacBio CLR datasets with high coverage. For example, see this recent 
 [evaluation by Ryan Wick](https://github.com/rrwick/Long-read-assembler-comparison).
 On the other hand, PacBio has specialized Quiver/Arrow tools that
 are more advanced, since they use PacBio-specific signal information. 
-It is possible, that you can get a bit of improvement after applying these tools.
 
-For the recent ONT data (Guppy4+), Flye often achieves Q30+ quality on verious genomes.
+For the recent ONT data (Guppy4+), Flye often achieves Q30+ quality on various genomes.
 One can typically push that a bit higher using Medaka or Nanopolish. See
 the recent [Trycycler paper and tool](https://github.com/rrwick/Trycycler) for the discussion.
 

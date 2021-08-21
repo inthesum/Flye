@@ -77,20 +77,20 @@ optional arguments:
 
 Input reads can be in FASTA or FASTQ format, uncompressed
 or compressed with gz. Currently, PacBio (CLR, HiFi, corrected)
-and ONT reads (raw, HQ, corrected) are supported. Expected error rates are
-<20% for CLR/raw ONT, <5% for ONT HQ, <3% for corrected, and <1% for HiFi. Note that Flye
+and ONT reads (regular, HQ, corrected) are supported. Expected error rates are
+<20% for PB CLR/regular ONT, <5% for ONT HQ, <3% for corrected, and <1% for HiFi. Note that Flye
 was primarily developed to run on uncorrected reads. You may specify multiple
 files with reads (separated by spaces). Mixing different read
-types is not yet supported. The --meta option enables the mode
+types is not yet supported. The `--meta` option enables the mode
 for metagenome/uneven coverage assembly.
 
 To reduce memory consumption for large genome assemblies,
 you can use a subset of the longest reads for initial disjointig
-assembly by specifying --asm-coverage and --genome-size options. Typically,
+assembly by specifying `--asm-coverage` and `--genome-size` options. Typically,
 40x coverage is enough to produce good disjointigs.
 
 You can run Flye polisher as a standalone tool using
---polish-target option.
+`--polish-target` option.
 
 ## <a name="examples"></a> Examples
 
@@ -238,7 +238,7 @@ all reads will be used at the later pipeline stages (e.g. for repeat resolution)
 ### Running only Flye polisher
 
 To polish an existing assembly, you can run Flye polisher as a standalone tool 
-using --polish-target. Paths to reads are specified similarly to the assembly mode,
+using `--polish-target`. Paths to reads are specified similarly to the assembly mode,
 and bam file could also be proveded instead of reads (the mapping stage in this case will
 be skipped).
 

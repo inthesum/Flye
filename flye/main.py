@@ -625,8 +625,8 @@ def _usage():
 def _epilog():
     return ("Input reads can be in FASTA or FASTQ format, uncompressed\n"
             "or compressed with gz. Currently, PacBio (CLR, HiFi, corrected)\n"
-            "and ONT reads (raw, HQ, corrected) are supported. Expected error rates are\n"
-            "<20% for CLR/raw ONT, <5% for ONT HQ, <3% for corrected, and <1% for HiFi. Note that Flye\n"
+            "and ONT reads (regular, HQ, corrected) are supported. Expected error rates are\n"
+            "<15% for PB CLR/regular ONT; <5% for ONT HQ, <3% for corrected, and <1% for HiFi. Note that Flye\n"
             "was primarily developed to run on uncorrected reads. You may specify multiple\n"
             "files with reads (separated by spaces). Mixing different read\n"
             "types is not yet supported. The --meta option enables the mode\n"
