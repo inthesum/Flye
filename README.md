@@ -27,7 +27,7 @@ Latest updates
 * New --nano-hq mode for ONT Guppy5+ and Q20 reads (3-5% error rate)
 * Optimized default parameters for HiFi (HPC error threshold 0.01 -> 0.001; increased min overlap)
 * Polishing improvements: reduced number of possible clusters of errors
-* Improvements in repeat delection algorithm to further limit a chance of (otherwise infrequent) misassemblies
+* Improvements in repeat detection algorithm to further limit a chance of (otherwise infrequent) misassemblies
 * Scaffolding is no longer performed by default (could be enabled with --scaffold)
 * Bam file input for the standalone polisher (same interface as for FASTA/Q)
 * Automatically selected minimum overlap up to 10k (was 5k)
