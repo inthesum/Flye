@@ -42,7 +42,7 @@ optional arguments:
   --nano-corr path [path ...]
                         ONT reads that were corrected with other methods (<3% error)
   --nano-hq path [path ...]
-                        ONT high-quality reads: Guppy5+ or Q20 (<5% error)
+                        ONT high-quality reads: Guppy5+ SUP or Q20 (<5% error)
   --subassemblies path [path ...]
                         [deprecated] high-quality contigs input
   -g size, --genome-size size
@@ -125,7 +125,7 @@ The dataset was originally released by the
 range of datasets, from old R7 pores to the most recent R9.x and R10.x. The
 expected error rate is 10-15%.
 
-* For the most recent ONT data basecalled with Guppy5 use the new `--nano-hq` mode.
+* For the most recent ONT data basecalled with Guppy5+ SUP use the new `--nano-hq` mode.
 Expected error rate is <5%.
 
 * For Q20 data, use a combination of `--nano-hq` and `--read-error 0.03`.

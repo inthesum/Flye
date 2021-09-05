@@ -1,7 +1,7 @@
 Flye 2.9 release (20 Aug 2022)
 =============================
 * Better assembly of very short sequences (e.g. plasmids or viruses). They vere often missed in previous versions.
-* New --nano-hq mode for ONT Guppy5+ and Q20 reads (3-5% error rate)
+* New --nano-hq mode for ONT Guppy5+ SUP and Q20 reads (3-5% error rate)
 * Optimized default parameters for HiFi (HPC error threshold 0.01 -> 0.001; increased min overlap)
 * Polishing improvements: reduced number of possible clusters of errors
 * Improvements in repeat delection algorithm to further limit a chance of (otherwise infrequent) misassemblies

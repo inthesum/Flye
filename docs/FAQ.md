@@ -50,7 +50,7 @@ Are PacBio CCS/HiFi reads supported?
 
 Yes, use the `--pacbio-hifi` option. 
 
-Are there any special parameters/modes for the newest ONT data (Guppy 5+, Q20)?
+Are there any special parameters/modes for the newest ONT data (Guppy 5+ SUP, Q20)?
 -------------------------------------------------------------------------------
 
 Yes, use the new `--nano-hq` mode.
