@@ -276,7 +276,7 @@ def _run_minimap(reference_file, reads_files, num_proc, mode, out_file,
                               stderr=open(stderr_file, "w"),
                               stdout=open(os.devnull, "w"))
         if sam_output:
-            subprocess.check_call(SAMTOOLS_BIN + " index " + "'" + out_file + "'", shell=True)
+            subprocess.check_call(SAMTOOLS_BIN + " index -@ 4 " + "'" + out_file + "'", shell=True)
         #os.remove(stderr_file)
 
     except (subprocess.CalledProcessError, OSError) as e:
