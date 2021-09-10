@@ -756,6 +756,11 @@ namespace
 			{
 				deadEnds.push_back(curPath);
 			}
+
+			//heuristic to prevent very slow processing of very tangled components
+			const size_t MAX_CANDIDATES = 100;
+			if (deadEnds.size() > MAX_CANDIDATES) break;
+			if (queue.size() > MAX_CANDIDATES) break;
 		}
 
 		//no paths over MAX_DEPTH, return the longest path
