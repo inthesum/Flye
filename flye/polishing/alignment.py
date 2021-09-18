@@ -13,6 +13,7 @@ from collections import namedtuple
 import subprocess
 import logging
 import datetime
+from copy import copy
 
 import flye.utils.fasta_parser as fp
 from flye.utils.utils import which, get_median
@@ -101,9 +102,9 @@ def get_uniform_alignments(alignments):
         return []
 
     WINDOW = 500
-    MIN_COV = 10
+    MIN_COV = 20
     GOOD_RATE = 0.66
-    MIN_QV = 30
+    MIN_QV = 20
 
     def is_reliable(aln):
         return not aln.is_secondary and not aln.is_supplementary and aln.map_qv >= MIN_QV
@@ -123,6 +124,7 @@ def get_uniform_alignments(alignments):
             wnd_all_cov[i] += 1
 
     cov_threshold = max(int(get_median(wnd_primary_cov)), MIN_COV)
+    orig_primary_cov = copy(wnd_primary_cov)
 
     selected_alignments = []
     original_sequence = 0
@@ -156,9 +158,6 @@ def get_uniform_alignments(alignments):
             wnd_good, wnd_bad = _aln_score(aln)
             sec_aln_scores[aln.qry_id] = (wnd_good, wnd_bad, aln)
 
-    #logger.debug("Seq: {0} pri_cov: {1} all_cov: {2}".format(ctg_id, _get_median(wnd_primary_cov),
-    #                                                         _get_median(wnd_all_cov)))
-
     #now, greedily add secondaty alignments, until they add useful coverage
     _score_fun = lambda x: (sec_aln_scores[x][0] - 2 * sec_aln_scores[x][1],
                             sec_aln_scores[x][2].trg_end - sec_aln_scores[x][2].trg_start)
@@ -177,9 +176,12 @@ def get_uniform_alignments(alignments):
 
         #logger.debug("\tSec score: {} {} {} {}".format(aln_id, wnd_good, wnd_bad, to_take))
 
-    #logger.debug("Original seq: {0}, reads: {1}".format(original_sequence, len(alignments)))
-    #logger.debug("Primary seq: {0}, reads: {1}".format(primary_sequence, primary_aln))
-    #logger.debug("Secondary seq: {0}, reads: {1}".format(secondary_sequence, secondary_aln))
+    #logger.debug("Seq: {0} pri_cov: {1} all_cov: {2}".format(ctg_id, get_median(orig_primary_cov),
+    #                                                         get_median(wnd_all_cov)) + "\n" +
+    #            "\tOriginal seq: {0}, reads: {1}".format(original_sequence, len(alignments)) + "\n" +
+    #            "\tPrimary seq: {0}, reads: {1}".format(primary_sequence, primary_aln) + "\n" +
+    #            "\tSecondary seq: {0}, reads: {1}".format(secondary_sequence, secondary_aln) + "\n" +
+    #            "\tSelected size: {0}, median coverage: {1}".format(len(selected_alignments), get_median(wnd_primary_cov)))
 
     return selected_alignments
 
