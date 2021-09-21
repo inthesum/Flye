@@ -630,7 +630,7 @@ void HaplotypeResolver::collapseHaplotypes()
 	}
 
 	//for each haplotype path, if it's a loop - convert it to a linear edge
-	GraphProcessor proc(_graph, _asmSeqs);
+	/*GraphProcessor proc(_graph, _asmSeqs);
 	auto unbranchingPaths = proc.getUnbranchingPaths();
 	for (auto& path : unbranchingPaths)
 	{
@@ -646,7 +646,7 @@ void HaplotypeResolver::collapseHaplotypes()
 				break;
 			}
 		}
-	}
+	}*/
 
 	_aligner.updateAlignments();
 	Logger::get().debug() << "[SIMPL] Collapsed " << numBridged << " haplotypes";
