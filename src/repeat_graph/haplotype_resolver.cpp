@@ -630,7 +630,7 @@ void HaplotypeResolver::collapseHaplotypes()
 	}
 
 	//for each haplotype path, if it's a loop - convert it to a linear edge
-	GraphProcessor proc(_graph, _asmSeqs);
+	/*GraphProcessor proc(_graph, _asmSeqs);
 	auto unbranchingPaths = proc.getUnbranchingPaths();
 	for (auto& path : unbranchingPaths)
 	{
@@ -646,7 +646,7 @@ void HaplotypeResolver::collapseHaplotypes()
 				break;
 			}
 		}
-	}
+	}*/
 
 	_aligner.updateAlignments();
 	Logger::get().debug() << "[SIMPL] Collapsed " << numBridged << " haplotypes";
@@ -756,6 +756,11 @@ namespace
 			{
 				deadEnds.push_back(curPath);
 			}
+
+			//heuristic to prevent very slow processing of very tangled components
+			const size_t MAX_CANDIDATES = 100;
+			if (deadEnds.size() > MAX_CANDIDATES) break;
+			if (queue.size() > MAX_CANDIDATES) break;
 		}
 
 		//no paths over MAX_DEPTH, return the longest path

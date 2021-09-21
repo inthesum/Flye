@@ -48,7 +48,7 @@ def _thread_worker(aln_reader, chunk_feeder, platform, results_queue, error_queu
                 continue
 
             ctg_aln = aln_reader.trim_and_transpose(ctg_aln, ctg_region.start, ctg_region.end)
-            ctg_aln = get_uniform_alignments(ctg_aln)
+            ctg_aln, _mean_cov = get_uniform_alignments(ctg_aln)
 
             profile, aln_errors = _contig_profile(ctg_aln, platform)
             sequence = _flatten_profile(profile)
