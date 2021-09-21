@@ -101,7 +101,7 @@ def get_uniform_alignments(alignments):
     if not alignments:
         return []
 
-    WINDOW = 500
+    WINDOW = 100
     MIN_COV = 20
     GOOD_RATE = 0.66
     MIN_QV = 20
@@ -183,7 +183,10 @@ def get_uniform_alignments(alignments):
     #            "\tSecondary seq: {0}, reads: {1}".format(secondary_sequence, secondary_aln) + "\n" +
     #            "\tSelected size: {0}, median coverage: {1}".format(len(selected_alignments), get_median(wnd_primary_cov)))
 
-    return selected_alignments
+    median_cov = get_median(wnd_primary_cov)
+    #mean_cov = sum(wnd_primary_cov) / (len(wnd_primary_cov) + 1)
+
+    return selected_alignments, median_cov
 
 
 def split_into_chunks(fasta_in, chunk_size, fasta_out):

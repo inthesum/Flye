@@ -73,17 +73,13 @@ def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
 
             #since we are working with contig chunks, tranform alignment coorinates
             ctg_aln = aln_reader.trim_and_transpose(ctg_aln, ctg_region.start, ctg_region.end)
-            ctg_aln = get_uniform_alignments(ctg_aln)
+            ctg_aln, mean_cov = get_uniform_alignments(ctg_aln)
 
             profile, aln_errors = _compute_profile(ctg_aln, ref_seq)
             partition, num_long_bubbles = _get_partition(profile, err_mode)
             ctg_bubbles = _get_bubble_seqs(ctg_aln, profile, partition, ctg_id)
 
             ##
-            aln_length_sum = 0
-            for aln in ctg_aln:
-                aln_length_sum += aln.qry_end - aln.qry_start
-            mean_cov = aln_length_sum / (ctg_region.end - ctg_region.start + 1)
             coverage_cap = 0.9 * cfg.vals["max_read_coverage"]
             if mean_cov > coverage_cap:
                 mean_cov = aln_reader.get_median_depth(ctg_region.ctg_id, ctg_region.start,
