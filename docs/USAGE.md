@@ -8,6 +8,7 @@ Table of Contents
 - [Examples](#examples)
 - [Supported Input Data](#inputdata)
 - [Parameter Descriptions](#parameters)
+- [Assembling diploid genomes](#diploid)
 - [Flye output](#output)
 - [Repeat graph](#graph)
 - [Flye benchmarks](#performance)
@@ -207,11 +208,6 @@ longer consensus contigs. The option `--keep-haplotypes` retains
 the alternative paths on the graph, producing less contigouos, but
 more detailed assembly.
 
-### Assembling diploid genomes
-
-Currently Flye will produce collapsed assemblies of diploid genomes, 
-represented by a sigle mosaic haplotype. To recover two phased haplotypes
-consider applying [HapDup](https://github.com/fenderglass/hapdup) after the assembly.
 
 ### Scaffold
 
@@ -265,6 +261,13 @@ The assembly will continue from the last previously completed step.
 You might also resume from a particular stage with `--resume-from stage_name`,
 where `stage_name` is a choice of `assembly, consensus, repeat, trestle, polishing`.
 For example, you might supply different sets of reads for different stages.
+
+## <a name="diploid"></a> Assembling diploid genomes
+
+Currently Flye will produce collapsed assemblies of diploid genomes, 
+represented by a sigle mosaic haplotype. To recover two phased haplotypes
+consider applying [HapDup](https://github.com/fenderglass/hapdup) after the assembly.
+
 
 ## <a name="output"></a> Flye output
 
