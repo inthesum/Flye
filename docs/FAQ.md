@@ -27,6 +27,9 @@ Flye will likely recover alternative haplotypes, but will not phase them.
 Because we do not attempt to reconstruct pseudo-haplotypes,
 this will also reduce the overall contiguity.
 
+For genomes with relatively low heterozygosity, it is now possible to recover two phased haplotypes
+by using [HapDup](https://github.com/fenderglass/hapdup) after the Flye assembly.
+
 Are metagenomes supported?
 --------------------------
 

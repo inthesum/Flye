@@ -12,6 +12,10 @@ to large mammalian-scale assemblies. The package represents a complete
 pipeline: it takes raw PacBio / ONT reads as input and outputs polished contigs.
 Flye also has a special mode for metagenome assembly.
 
+Currently Flye will produce collapsed assemblies of diploid genomes, 
+represented by a sigle mosaic haplotype. To recover two phased haplotypes
+consider applying [HapDup](https://github.com/fenderglass/hapdup) after the assembly.
+
 Manuals
 -------
 

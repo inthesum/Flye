@@ -207,6 +207,12 @@ longer consensus contigs. The option `--keep-haplotypes` retains
 the alternative paths on the graph, producing less contigouos, but
 more detailed assembly.
 
+### Assembling diploid genomes
+
+Currently Flye will produce collapsed assemblies of diploid genomes, 
+represented by a sigle mosaic haplotype. To recover two phased haplotypes
+consider applying [HapDup](https://github.com/fenderglass/hapdup) after the assembly.
+
 ### Scaffold
 
 Starting from the version 2.9 Flye does not perform scaffolding by default,
