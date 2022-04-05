@@ -195,10 +195,10 @@ int HaplotypeResolver::findHeterozygousLoops()
 		_graph.linkEdges(_graph.complementEdge(outEdge),
 						 _graph.complementEdge(inEdge));
 
-		//bridging sequence.
 		//either remove or unroll loop, depending on the coverage
-		if (loop.meanCoverage < 
-			(entrancePath->meanCoverage + exitPath->meanCoverage) / 4)
+		int32_t mainPathCoverage = (entrancePath->meanCoverage + exitPath->meanCoverage) / 2;
+		int32_t LOOP_COV_RATE = 4;	//2 times lower than half coverage (in case of haploid indel)
+		if (loop.meanCoverage < mainPathCoverage / LOOP_COV_RATE)
 		{
 			_bridgingSeqs[std::make_pair(inEdge, outEdge)] = DnaSequence("A");
 			_bridgingSeqs[std::make_pair(_graph.complementEdge(outEdge), 
