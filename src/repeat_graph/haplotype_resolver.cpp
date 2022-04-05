@@ -648,6 +648,16 @@ void HaplotypeResolver::collapseHaplotypes()
 		}
 	}*/
 
+	if ((bool)Config::get("remove_alt_edges"))
+	{
+		std::unordered_set<GraphEdge*> toDelete;
+		for (auto& edge: _graph.iterEdges())
+		{
+			if (edge->altHaplotype) toDelete.insert(edge);
+		}
+		for (auto& edge : toDelete) _graph.removeEdge(edge);
+	}
+
 	_aligner.updateAlignments();
 	Logger::get().debug() << "[SIMPL] Collapsed " << numBridged << " haplotypes";
 }
