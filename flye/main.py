@@ -780,7 +780,6 @@ def main():
             args.extra_params += "," + alt_params
         else:
             args.extra_params = "remove_alt_edges=1"
-    print(args.extra_params)
 
     if args.pacbio_raw:
         args.reads = args.pacbio_raw
