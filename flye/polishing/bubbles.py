@@ -53,7 +53,7 @@ class Bubble(object):
 
 
 def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
-                   results_queue, error_queue, bubbles_file_handle,
+                   results_queue, error_queue, bubbles_file,
                    bubbles_file_lock):
     """
     Will run in parallel
@@ -94,7 +94,7 @@ def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
                 b.position += ctg_region.start
 
             with bubbles_file_lock:
-                _output_bubbles(ctg_bubbles, bubbles_file_handle)
+                _output_bubbles(ctg_bubbles, open(bubbles_file, "a"))
             results_queue.put((ctg_id, len(ctg_bubbles), num_long_bubbles,
                                num_empty, num_long_branch, aln_errors,
                                mean_cov))
@@ -116,18 +116,18 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
     CHUNK_SIZE = 1000000
 
     contigs_fasta = fp.read_sequence_dict(contigs_path)
-    aln_reader = SynchronizedSamReader(alignment_path, contigs_fasta,
-                                       cfg.vals["max_read_coverage"], use_secondary=True)
-    chunk_feeder = SynchonizedChunkManager(contigs_fasta, chunk_size=CHUNK_SIZE)
-
     manager = multiprocessing.Manager()
+    aln_reader = SynchronizedSamReader(alignment_path, contigs_fasta, manager,
+                                       cfg.vals["max_read_coverage"], use_secondary=True)
+    chunk_feeder = SynchonizedChunkManager(contigs_fasta, manager, chunk_size=CHUNK_SIZE)
+
     results_queue = manager.Queue()
     error_queue = manager.Queue()
     bubbles_out_lock = multiprocessing.Lock()
-    bubbles_out_handle = open(bubbles_out, "w")
+    #bubbles_out_handle = open(bubbles_out, "w")
 
     process_in_parallel(_thread_worker, (aln_reader, chunk_feeder, contigs_info, err_mode,
-                         results_queue, error_queue, bubbles_out_handle, bubbles_out_lock), num_proc)
+                         results_queue, error_queue, bubbles_out, bubbles_out_lock), num_proc)
     if not error_queue.empty():
         raise error_queue.get()
 
