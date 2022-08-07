@@ -64,6 +64,8 @@ optional arguments:
   --plasmids            unused (retained for backward compatibility)
   --meta                metagenome / uneven coverage mode
   --keep-haplotypes     do not collapse alternative haplotypes
+  --no-alt-contigs      do not output contigs representing alternative
+                        haplotypes
   --scaffold            enable scaffolding using graph [disabled by default]
   --trestle             [deprecated] enable Trestle [disabled by default]
   --polish-target path  run polisher on the target sequence
@@ -208,6 +210,12 @@ longer consensus contigs. The option `--keep-haplotypes` retains
 the alternative paths on the graph, producing less contigouos, but
 more detailed assembly.
 
+### Removing alternative contigs
+
+In default mode, Flye is performing collapsed/haploid assmebly,
+but may output contigs representing alternative alleles if they
+differ significatnly from the "primary" assmebled allele.
+To disable output of alternative contigs, use the `--no-alt-contigs` option.
 
 ### Scaffold
 
@@ -308,7 +316,8 @@ Scaffold gaps are marked with `??` symbols, and `*` symbol denotes a
 terminal graph node.
 
 Alternative contigs (representing alternative haplotypes) will have the same
-alt. group ID. Primary contigs are marked by `*`
+alt. group ID. Primary contigs are marked by `*`. Note that the ouptut of
+alternative contigs could be disabled via the `--no-alt-contigs` option.
 
 ## <a name="graph"></a> Repeat graph
 

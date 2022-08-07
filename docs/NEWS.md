@@ -1,3 +1,11 @@
+Flye 2.9.1 release (07 Aug 2022)
+===============================
+* New option --no-alt-contigs to remove all non-primary contigs from the assembly
+* Fixed crash on MacOS with Python 3.8+
+* Fixed rare artificially introduced mismatches while polishing
+* Fixed slow simplification of very tangled graphs
+* Various other small fixes
+
 Flye 2.9 release (20 Aug 2022)
 =============================
 * Better assembly of very short sequences (e.g. plasmids or viruses). They vere often missed in previous versions.
