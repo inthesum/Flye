@@ -107,7 +107,8 @@ def get_uniform_alignments(alignments):
     MIN_QV = 20
 
     def is_reliable(aln):
-        return not aln.is_secondary and not aln.is_supplementary and aln.map_qv >= MIN_QV
+        return not aln.is_secondary and aln.map_qv >= MIN_QV
+        #return not aln.is_secondary and not aln.is_supplementary and aln.map_qv >= MIN_QV
 
     seq_len = alignments[0].trg_len
     ctg_id = alignments[0].trg_id
