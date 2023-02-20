@@ -277,8 +277,7 @@ class JobConsensus(Job):
         logger.info("Running Minimap2")
         out_alignment = os.path.join(self.consensus_dir, "minimap.bam")
         aln.make_alignment(self.in_contigs, self.args.reads, self.args.threads,
-                           self.consensus_dir, self.args.platform, out_alignment,
-                           reference_mode=True, sam_output=True)
+                           self.args.platform, self.args.read_type, out_alignment)
 
         contigs_info = aln.get_contigs_info(self.in_contigs)
         logger.info("Computing consensus")
@@ -326,7 +325,7 @@ class JobPolishing(Job):
                                self.out_files["stats"], self.out_files["contigs"])
         pol.generate_polished_edges(self.in_graph_edges, self.in_graph_gfa,
                                     self.out_files["contigs"],
-                                    self.polishing_dir, self.args.platform,
+                                    self.polishing_dir, self.args.platform, self.args.read_type,
                                     stats, self.args.threads)
         os.remove(contigs)
         if os.path.getsize(self.out_files["contigs"]) == 0:

@@ -80,8 +80,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
             logger.info("Running minimap2")
             alignment_file = os.path.join(work_dir, "minimap_{0}.bam".format(i + 1))
             make_alignment(prev_assembly, read_seqs, num_threads,
-                           work_dir, read_platform, alignment_file,
-                           reference_mode=True, sam_output=True)
+                           read_platform, read_type, alignment_file)
         else:
             logger.info("Polishing with provided bam")
             alignment_file = read_seqs[0]
@@ -144,7 +143,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
 
 
 def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
-                            error_mode, polished_stats, num_threads):
+                            platform, read_type, polished_stats, num_threads):
     """
     Generate polished graph edges sequences by extracting them from
     polished contigs
@@ -163,8 +162,7 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
     alignment_file = os.path.join(work_dir, "edges_aln.bam")
     polished_dict = fp.read_sequence_dict(polished_contigs)
     make_alignment(polished_contigs, [edges_file], num_threads,
-                   work_dir, error_mode, alignment_file,
-                   reference_mode=True, sam_output=True)
+                   platform, read_type, alignment_file)
     aln_reader = SynchronizedSamReader(alignment_file,
                                        polished_dict, multiprocessing.Manager(),
                                        cfg.vals["max_read_coverage"])
