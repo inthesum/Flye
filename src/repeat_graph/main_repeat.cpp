@@ -190,7 +190,7 @@ int repeat_main(int argc, char** argv)
 	Logger::get().info() << "Building repeat graph";
 	SequenceContainer edgeSequences;
 	RepeatGraph rg(seqAssembly, &edgeSequences);
-	rg.build();
+	rg.build(keepHaplotypes);
 	//rg.validateGraph();
 
 	Logger::get().info() << "Parsing reads";
