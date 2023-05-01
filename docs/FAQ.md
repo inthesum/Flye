@@ -247,6 +247,6 @@ My question is not listed, how do I get help?
 ---------------------------------------------
 
 Please post your question to the [issue tracker](https://github.com/fenderglass/Flye/issues). 
-In case you prefer personal communcation, you can contact Mikhail at fenderglass@gmail.com.
+In case you prefer personal communcation, you can contact Mikhail at mikolmogorov@gmail.com.
 If you reporting a problem, please include the `flye.log` file and provide some 
 details about your dataset (if possible).
