@@ -429,6 +429,9 @@ def _run_polisher_only(args):
     if bam_input and len(args.reads) > 1:
         raise ResumeException("Only single bam input supported")
 
+    if bam_input and args.num_iters > 1:
+        raise ResumeException("Bam input only supports single iteration. For multiple iterations, provide fastq instead")
+
     pol.polish(args.polish_target, args.reads, args.out_dir,
                args.num_iters, args.threads, args.platform,
                args.read_type, output_progress=True)
