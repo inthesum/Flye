@@ -122,7 +122,7 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
     CHUNK_SIZE = 1000000
 
     contigs_fasta = fp.read_sequence_dict(contigs_path)
-    manager = None if num_proc == 0 else multiprocessing.Manager()
+    manager = None if num_proc == 1 else multiprocessing.Manager()
     aln_reader = SynchronizedSamReader(alignment_path, contigs_fasta, manager,
                                        cfg.vals["max_read_coverage"], use_secondary=True)
     chunk_feeder = SynchonizedChunkManager(contigs_fasta, manager, chunk_size=CHUNK_SIZE)
