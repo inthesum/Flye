@@ -609,7 +609,7 @@ def main():
                         default=None, required=True,
                         metavar="path", help="Output directory")
     parser.add_argument("-t", "--threads", dest="threads",
-                        type=lambda v: check_int_range(v, 0, 128),
+                        type=lambda v: check_int_range(v, 1, 128),
                         default=1, metavar="int", help="number of parallel threads [1]")
     parser.add_argument("-i", "--iterations", dest="num_iters",
                         type=lambda v: check_int_range(v, 0, 10),
