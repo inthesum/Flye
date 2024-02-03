@@ -21,6 +21,7 @@ int main(int argc, char** argv)
 	std::string module = argv[1];
 	if (module == "assemble")
 	{
+        std::cout << "assemble started!" << std::endl;
 		return assemble_main(argc - 1, argv + 1);
 	}
 	else if (module == "repeat")
