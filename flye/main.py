@@ -15,6 +15,8 @@ import argparse
 import json
 import shutil
 import subprocess
+import time
+from datetime import timedelta
 
 import flye.polishing.alignment as aln
 import flye.polishing.polish as pol
@@ -315,18 +317,52 @@ class JobPolishing(Job):
         if not os.path.isdir(self.polishing_dir):
             os.mkdir(self.polishing_dir)
 
+        profile_data = {}
+        total_time = 0
+        profile_file = os.path.join(self.args.out_dir, "profile.txt")
+
+        start_time = time.time()
         contigs, stats = \
             pol.polish(self.in_contigs, self.args.reads, self.polishing_dir,
                        self.args.num_iters, self.args.threads, self.args.platform,
-                       self.args.read_type, output_progress=True)
+                       self.args.read_type, profile_file, output_progress=True)
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        profile_data["polish"] = [elapsed_time_seconds, elapsed_time]
+
         #contigs = os.path.join(self.polishing_dir, "polished_1.fasta")
         #stats = os.path.join(self.polishing_dir, "contigs_stats.txt")
+
+        start_time = time.time()
         pol.filter_by_coverage(self.args, stats, contigs,
                                self.out_files["stats"], self.out_files["contigs"])
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        profile_data["filter"] = [elapsed_time_seconds, elapsed_time]
+
+        start_time = time.time()
         pol.generate_polished_edges(self.in_graph_edges, self.in_graph_gfa,
                                     self.out_files["contigs"],
                                     self.polishing_dir, self.args.platform, self.args.read_type,
-                                    stats, self.args.threads)
+                                    stats, self.args.threads, profile_file)
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        profile_data["generate"] = [elapsed_time_seconds, elapsed_time]
+
+        with open(profile_file, "a") as file:
+            file.write("JobPolishing\n")
+            for function_name, function_time in profile_data.items():
+                elapsed_time_seconds = function_time[0]
+                elapsed_time = function_time[1]
+                file.write(f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
+            file.write("\n")
+
         os.remove(contigs)
         if os.path.getsize(self.out_files["contigs"]) == 0:
             raise asm.AssembleException("No contigs were assembled - "
@@ -488,14 +524,40 @@ def _run(args):
             raise ResumeException("Can't resume: stage {0} does not exist"
                                   .format(job_to_resume))
 
+    profile_data = {}
+    total_time = 0
+
     for i in range(current_job, len(jobs)):
         jobs[i].save(save_file)
+
+        start_time = time.time()
         jobs[i].run()
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        if i != 0 and i != len(jobs)-1:
+            profile_data[jobs[i].name] = [elapsed_time_seconds, elapsed_time]
+
         if args.stop_after == jobs[i].name:
             if i + 1 < len(jobs):
                 jobs[i + 1].save(save_file)
             logger.info("Pipeline stopped as requested by --stop-after")
             break
+
+    profile_file = os.path.join(args.out_dir, "profile.txt")
+    with open(profile_file, "a") as file:
+        for function_name, function_time in profile_data.items():
+            elapsed_time_seconds = function_time[0]
+            elapsed_time = function_time[1]
+            file.write(f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
+        file.write("\n")
+
+
+def format_timedelta(td):
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def _enable_logging(log_file, debug, overwrite):
