@@ -446,6 +446,8 @@ def _run_polisher_only(args):
     """
     Runs standalone polisher
     """
+    profile_file = os.path.join(args.out_dir, "profile_polish.txt")
+
     logger.info("Running Flye polisher")
     logger.debug("Cmd: %s", " ".join(sys.argv))
     bam_input = False
@@ -470,7 +472,7 @@ def _run_polisher_only(args):
 
     pol.polish(args.polish_target, args.reads, args.out_dir,
                args.num_iters, args.threads, args.platform,
-               args.read_type, output_progress=True)
+               args.read_type, profile_file, output_progress=True)
     logger.info("Done!")
 
 
