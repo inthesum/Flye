@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "bubble.h"
 #include "subs_matrix.h"
 #include "alignment.h"
