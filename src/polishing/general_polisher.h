@@ -14,7 +14,9 @@ public:
 	GeneralPolisher(const SubstitutionMatrix& subsMatrix):
 		_subsMatrix(subsMatrix)
 	{}
-	void polishBubble(Bubble& bubble) const;
+	void polishBubble(Bubble& bubble,
+                      std::chrono::duration<double>& polishClosestBranchesDuration,
+                      std::chrono::duration<double>& polishAllBranchesDuration) const;
 
 private:
 	StepInfo makeStep(const std::string& candidate, 

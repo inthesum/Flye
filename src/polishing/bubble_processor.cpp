@@ -83,15 +83,23 @@ void BubbleProcessor::parallelWorker()
     std::thread::id threadId = std::this_thread::get_id();
 
     std::chrono::duration<double> duration(0);
+    std::chrono::duration<double> cacheBubblesDuration(0);
     std::chrono::duration<double> generalPolisherDuration(0);
     std::chrono::duration<double> homoPolisherDuration(0);
     std::chrono::duration<double> fixerDuration(0);
+
+    std::chrono::duration<double> polishClosestBranchesDuration(0);
+    std::chrono::duration<double> polishAllBranchesDuration(0);
 
     while (true)
     {
         if (_cachedBubbles.empty())
         {
+            auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
             this->cacheBubbles(BUBBLES_CACHE);
+            auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
+            cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
+
             if(_cachedBubbles.empty())
             {
                 auto end = std::chrono::high_resolution_clock::now(); // End timer
@@ -99,9 +107,13 @@ void BubbleProcessor::parallelWorker()
                 std::cout << std::endl;
                 std::cout << "thread id: " << threadId << std::endl;
                 std::cout << "parallelWorker: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
+                std::cout << "cache bubbles: " << std::fixed << std::setprecision(2) << cacheBubblesDuration.count() << " seconds" << std::endl;
                 std::cout << "_generalPolisher: " << std::fixed << std::setprecision(2) << generalPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_dinucFixer: " << std::fixed << std::setprecision(2) << fixerDuration.count() << " seconds" << std::endl;
+
+                std::cout << "polish closest branches: " << std::fixed << std::setprecision(2) << polishClosestBranchesDuration.count() << " seconds" << std::endl;
+                std::cout << "polish all branches: " << std::fixed << std::setprecision(2) << polishAllBranchesDuration.count() << " seconds" << std::endl;
 
                 _stateMutex.unlock();
 
@@ -118,7 +130,7 @@ void BubbleProcessor::parallelWorker()
             _stateMutex.unlock();
 
             auto generalPolisherStart = std::chrono::high_resolution_clock::now();
-            _generalPolisher.polishBubble(bubble);
+            _generalPolisher.polishBubble(bubble, polishClosestBranchesDuration, polishAllBranchesDuration);
             auto generalPolisherEnd = std::chrono::high_resolution_clock::now();
             generalPolisherDuration += generalPolisherEnd - generalPolisherStart;
 
