@@ -75,11 +75,12 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 
 void BubbleProcessor::parallelWorker()
 {
+    auto start = std::chrono::high_resolution_clock::now(); // Start timer
+
     const int MAX_BUBBLE = 5000;
 
     _stateMutex.lock();
 
-    auto start = std::chrono::high_resolution_clock::now(); // Start timer
     std::thread::id threadId = std::this_thread::get_id();
 
     std::chrono::duration<double> duration(0);
