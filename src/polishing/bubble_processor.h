@@ -44,7 +44,9 @@ private:
 	const DinucleotideFixer	  _dinucFixer;
 
 	ProgressPercent 		  _progress;
-	std::mutex				  _stateMutex;
+//	std::mutex				  _stateMutex;
+    std::mutex                _readMutex;
+    std::mutex                _writeMutex;
 	std::vector<Bubble>		  _cachedBubbles;
 
 	std::ifstream			  _bubblesFile;
