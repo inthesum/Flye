@@ -75,12 +75,6 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 
 void BubbleProcessor::parallelWorker()
 {
-    auto start = std::chrono::high_resolution_clock::now(); // Start timer
-
-    const int MAX_BUBBLE = 5000;
-
-    _stateMutex.lock();
-
     std::thread::id threadId = std::this_thread::get_id();
 
     std::chrono::duration<double> duration(0);
@@ -88,9 +82,19 @@ void BubbleProcessor::parallelWorker()
     std::chrono::duration<double> generalPolisherDuration(0);
     std::chrono::duration<double> homoPolisherDuration(0);
     std::chrono::duration<double> fixerDuration(0);
+    std::chrono::duration<double> waitDuration(0);
 
     std::chrono::duration<double> polishClosestBranchesDuration(0);
     std::chrono::duration<double> polishAllBranchesDuration(0);
+
+    auto start = std::chrono::high_resolution_clock::now(); // Start timer
+
+    const int MAX_BUBBLE = 5000;
+
+    auto startWaiting = std::chrono::high_resolution_clock::now();
+    _stateMutex.lock();
+    auto endWaiting = std::chrono::high_resolution_clock::now();
+    waitDuration += endWaiting - startWaiting;
 
     while (true)
     {
@@ -108,6 +112,7 @@ void BubbleProcessor::parallelWorker()
                 std::cout << std::endl;
                 std::cout << "thread id: " << threadId << std::endl;
                 std::cout << "parallelWorker: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
+                std::cout << "waiting: " << std::fixed << std::setprecision(2) << waitDuration.count() << " seconds" << std::endl;
                 std::cout << "cache bubbles: " << std::fixed << std::setprecision(2) << cacheBubblesDuration.count() << " seconds" << std::endl;
                 std::cout << "_generalPolisher: " << std::fixed << std::setprecision(2) << generalPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
@@ -148,7 +153,10 @@ void BubbleProcessor::parallelWorker()
             auto fixerEnd = std::chrono::high_resolution_clock::now();
             fixerDuration += fixerEnd - fixerStart;
 
+            auto startWaiting = std::chrono::high_resolution_clock::now();
             _stateMutex.lock();
+            auto endWaiting = std::chrono::high_resolution_clock::now();
+            waitDuration += endWaiting - startWaiting;
         }
 
         this->writeBubbles({bubble});
