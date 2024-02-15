@@ -47,9 +47,10 @@ private:
 //	std::mutex				  _stateMutex;
     std::mutex                _readMutex;
     std::mutex                _writeMutex;
-	std::vector<Bubble>		  _cachedBubbles;
+	std::vector<Bubble>		  _preprocessBubbles;
+//    std::vector<Bubble>       _postprocessBubbles;
 
-	std::ifstream			  _bubblesFile;
+    std::ifstream			  _bubblesFile;
 	std::ofstream			  _consensusFile;
 	std::ofstream			  _logFile;
 	bool					  _verbose;

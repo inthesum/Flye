@@ -108,10 +108,6 @@ int polisher_main(int argc, char* argv[])
 	BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo);
 	if (!outVerbose.empty())
 		bp.enableVerboseOutput(outVerbose);
-
-    std::cout << "bubblesFile: " << bubblesFile << std::endl;
-    std::cout << "outConsensus: " << outConsensus << std::endl;
-
 	bp.polishAll(bubblesFile, outConsensus, numThreads);
 
 	return 0;
