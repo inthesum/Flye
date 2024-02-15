@@ -75,6 +75,8 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 
 void BubbleProcessor::parallelWorker()
 {
+    auto start = std::chrono::high_resolution_clock::now();
+
     std::thread::id threadId = std::this_thread::get_id();
 
     std::chrono::duration<double> duration(0);
@@ -87,15 +89,8 @@ void BubbleProcessor::parallelWorker()
     std::chrono::duration<double> polishClosestBranchesDuration(0);
     std::chrono::duration<double> polishAllBranchesDuration(0);
 
-    auto start = std::chrono::high_resolution_clock::now(); // Start timer
-
     const int MAX_BUBBLE = 5000;
 //    int numBubbles = 0;
-
-//    auto startWaiting = std::chrono::high_resolution_clock::now();
-//    _stateMutex.lock();
-//    auto endWaiting = std::chrono::high_resolution_clock::now();
-//    waitDuration += endWaiting - startWaiting;
 
     auto startWaiting = std::chrono::high_resolution_clock::now();
     _readMutex.lock();
@@ -144,8 +139,6 @@ void BubbleProcessor::parallelWorker()
                 std::cout << "polish closest branches: " << std::fixed << std::setprecision(2) << polishClosestBranchesDuration.count() << " seconds" << std::endl;
                 std::cout << "polish all branches: " << std::fixed << std::setprecision(2) << polishAllBranchesDuration.count() << " seconds" << std::endl;
 
-//                _stateMutex.unlock();
-
                 return;
             }
         }
@@ -158,8 +151,6 @@ void BubbleProcessor::parallelWorker()
         if (bubble.candidate.size() < MAX_BUBBLE &&
             bubble.branches.size() > 1)
         {
-//            _stateMutex.unlock();
-
             auto generalPolisherStart = std::chrono::high_resolution_clock::now();
             _generalPolisher.polishBubble(bubble, polishClosestBranchesDuration, polishAllBranchesDuration);
             auto generalPolisherEnd = std::chrono::high_resolution_clock::now();
@@ -177,11 +168,6 @@ void BubbleProcessor::parallelWorker()
             _dinucFixer.fixBubble(bubble);
             auto fixerEnd = std::chrono::high_resolution_clock::now();
             fixerDuration += fixerEnd - fixerStart;
-
-//            auto startWaiting = std::chrono::high_resolution_clock::now();
-//            _stateMutex.lock();
-//            auto endWaiting = std::chrono::high_resolution_clock::now();
-//            waitDuration += endWaiting - startWaiting;
         }
 
         startWaiting = std::chrono::high_resolution_clock::now();
