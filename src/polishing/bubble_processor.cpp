@@ -91,7 +91,9 @@ void BubbleProcessor::parallelWorker()
     std::chrono::duration<double> polishAllBranchesDuration(0);
 
     const int MAX_BUBBLE = 5000;
-//    int numBubbles = 0;
+    int numBubbles = 0;
+    int numBubblesPolished = 0;
+    std::vector<Bubble>       _postprocessBubbles;
 
     auto startWaiting = std::chrono::high_resolution_clock::now();
     _readMutex.lock();
@@ -109,19 +111,19 @@ void BubbleProcessor::parallelWorker()
 
             if(_preprocessBubbles.empty())
             {
-//                if (!_postprocessBubbles.empty()) {
-//                    auto startWaiting = std::chrono::high_resolution_clock::now();
-//                    _writeMutex.lock();
-//                    auto endWaiting = std::chrono::high_resolution_clock::now();
-//                    waitDuration += endWaiting - startWaiting;
-//
-//                    for(const auto bubble : _postprocessBubbles) {
-//                        this->writeBubbles({bubble});
-//                        if (_verbose) this->writeLog({bubble});
-//                    }
-//                    _writeMutex.unlock();
-//                    _postprocessBubbles.clear();
-//                }
+                if (!_postprocessBubbles.empty()) {
+                    auto startWaiting = std::chrono::high_resolution_clock::now();
+                    _writeMutex.lock();
+                    auto endWaiting = std::chrono::high_resolution_clock::now();
+                    waitWriteDuration += endWaiting - startWaiting;
+
+                    for(const auto bubble : _postprocessBubbles) {
+                        this->writeBubbles({bubble});
+                        if (_verbose) this->writeLog({bubble});
+                    }
+                    _writeMutex.unlock();
+                    _postprocessBubbles.clear();
+                }
 
                 _readMutex.unlock();
 
@@ -129,7 +131,8 @@ void BubbleProcessor::parallelWorker()
                 duration = end - start;
                 std::cout << std::endl;
                 std::cout << "thread id: " << threadId << std::endl;
-//                std::cout << "number of bubbles: " << numBubbles << std::endl;
+                std::cout << "number of bubbles: " << numBubbles << std::endl;
+                std::cout << "number of polished bubbles: " << numBubblesPolished << std::endl;
                 std::cout << "parallelWorker: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
                 std::cout << "waiting for read: " << std::fixed << std::setprecision(2) << waitReadDuration.count() << " seconds" << std::endl;
                 std::cout << "waiting for write: " << std::fixed << std::setprecision(2) << waitWriteDuration.count() << " seconds" << std::endl;
@@ -147,12 +150,15 @@ void BubbleProcessor::parallelWorker()
 
         Bubble bubble = _preprocessBubbles.back();
         _preprocessBubbles.pop_back();
+        numBubbles++;
 
         _readMutex.unlock();
 
         if (bubble.candidate.size() < MAX_BUBBLE &&
             bubble.branches.size() > 1)
         {
+            numBubblesPolished++;
+
             auto generalPolisherStart = std::chrono::high_resolution_clock::now();
             _generalPolisher.polishBubble(bubble, polishClosestBranchesDuration, polishAllBranchesDuration);
             auto generalPolisherEnd = std::chrono::high_resolution_clock::now();
@@ -172,30 +178,26 @@ void BubbleProcessor::parallelWorker()
             fixerDuration += fixerEnd - fixerStart;
         }
 
-        startWaiting = std::chrono::high_resolution_clock::now();
-        _writeMutex.lock();
-        endWaiting = std::chrono::high_resolution_clock::now();
-        waitWriteDuration += endWaiting - startWaiting;
+        _postprocessBubbles.push_back(bubble);
 
-        this->writeBubbles({bubble});
-        if (_verbose) this->writeLog({bubble});
+        if (_postprocessBubbles.size() >= BUBBLES_CACHE) {
+            startWaiting = std::chrono::high_resolution_clock::now();
+            _writeMutex.lock();
+            endWaiting = std::chrono::high_resolution_clock::now();
+            waitWriteDuration += endWaiting - startWaiting;
 
-        _writeMutex.unlock();
+            for(const auto bubble : _postprocessBubbles) {
+                this->writeBubbles({bubble});
+                if (_verbose) this->writeLog({bubble});
+            }
+            _writeMutex.unlock();
+            _postprocessBubbles.clear();
+        }
 
         startWaiting = std::chrono::high_resolution_clock::now();
         _readMutex.lock();
         endWaiting = std::chrono::high_resolution_clock::now();
         waitReadDuration += endWaiting - startWaiting;
-
-//        _postprocessBubbles.push_back(bubble);
-//        numBubbles++;
-//        if (_postprocessBubbles.size() >= BUBBLES_CACHE) {
-//            for(const auto bubble : _postprocessBubbles) {
-//                this->writeBubbles({bubble});
-//                if (_verbose) this->writeLog({bubble});
-//            }
-//            _postprocessBubbles.clear();
-//        }
     }
 }
 
