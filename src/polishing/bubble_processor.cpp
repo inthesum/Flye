@@ -86,6 +86,7 @@ void BubbleProcessor::parallelWorker()
     std::chrono::duration<double> fixerDuration(0);
     std::chrono::duration<double> waitReadDuration(0);
     std::chrono::duration<double> waitWriteDuration(0);
+    std::chrono::duration<double> writeBubblesDuration(0);
 
     std::chrono::duration<double> polishClosestBranchesDuration(0);
     std::chrono::duration<double> polishAllBranchesDuration(0);
@@ -93,7 +94,7 @@ void BubbleProcessor::parallelWorker()
     const int MAX_BUBBLE = 5000;
     int numBubbles = 0;
     int numBubblesPolished = 0;
-    std::vector<Bubble>       _postprocessBubbles;
+    std::vector<Bubble> _postprocessBubbles;
 
     auto startWaiting = std::chrono::high_resolution_clock::now();
     _readMutex.lock();
@@ -116,9 +117,12 @@ void BubbleProcessor::parallelWorker()
                     _writeMutex.lock();
                     auto endWaiting = std::chrono::high_resolution_clock::now();
                     waitWriteDuration += endWaiting - startWaiting;
-                    
+
+                    auto startWriting = std::chrono::high_resolution_clock::now();
                     this->writeBubbles(_postprocessBubbles);
                     if (_verbose) this->writeLog(_postprocessBubbles);
+                    auto endWriting = std::chrono::high_resolution_clock::now();
+                    writeBubblesDuration += endWriting - startWriting;
                     _writeMutex.unlock();
                     _postprocessBubbles.clear();
                 }
@@ -133,6 +137,7 @@ void BubbleProcessor::parallelWorker()
                 std::cout << "waiting for read: " << std::fixed << std::setprecision(2) << waitReadDuration.count() << " seconds" << std::endl;
                 std::cout << "waiting for write: " << std::fixed << std::setprecision(2) << waitWriteDuration.count() << " seconds" << std::endl;
                 std::cout << "cache bubbles: " << std::fixed << std::setprecision(2) << cacheBubblesDuration.count() << " seconds" << std::endl;
+                std::cout << "write bubbles: " << std::fixed << std::setprecision(2) << writeBubblesDuration.count() << " seconds" << std::endl;
                 std::cout << "_generalPolisher: " << std::fixed << std::setprecision(2) << generalPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_dinucFixer: " << std::fixed << std::setprecision(2) << fixerDuration.count() << " seconds" << std::endl;
@@ -184,8 +189,11 @@ void BubbleProcessor::parallelWorker()
             endWaiting = std::chrono::high_resolution_clock::now();
             waitWriteDuration += endWaiting - startWaiting;
 
+            auto startWriting = std::chrono::high_resolution_clock::now();
             this->writeBubbles(_postprocessBubbles);
             if (_verbose) this->writeLog(_postprocessBubbles);
+            auto endWriting = std::chrono::high_resolution_clock::now();
+            writeBubblesDuration += endWriting - startWriting;
             _writeMutex.unlock();
             _postprocessBubbles.clear();
         }
