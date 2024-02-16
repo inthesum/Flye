@@ -30,9 +30,9 @@ public:
 	void enableVerboseOutput(const std::string& filename);
 
 private:
-	void parallelWorker(const std::string& outFile);
+	void parallelWorker(const std::string outFile);
 	void cacheBubbles(int numBubbles);
-	void writeBubbles(const std::vector<Bubble>& bubbles);
+//	void writeBubbles(const std::vector<Bubble>& bubbles);
 	void writeLog(const std::vector<Bubble>& bubbles);
 
 	const int BUBBLES_CACHE = 100;
@@ -49,7 +49,7 @@ private:
 	std::vector<Bubble>		  _preprocessBubbles;
 
     std::ifstream			  _bubblesFile;
-	std::ofstream			  _consensusFile;
+//	std::ofstream			  _consensusFile;
 	std::ofstream			  _logFile;
 	bool					  _verbose;
 	bool 					  _showProgress;

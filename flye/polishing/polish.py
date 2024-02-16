@@ -148,7 +148,9 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         #Cleanup
         os.remove(bubbles_file)
         for j in range(num_threads):
-            filename = consensus_out + str(j)
+            filename = consensus_out
+            base, ext = filename.rsplit('.', 1)
+            filename = f"{base}_{j}.{ext}"
             os.remove(filename)
 
         if not bam_input:
@@ -390,7 +392,9 @@ def _compose_sequence(consensus_file, num_threads):
     consensuses = defaultdict(list)
     coverage = defaultdict(list)
     for i in range(num_threads):
-        filename = consensus_file + str(i)
+        filename = consensus_file
+        base, ext = filename.rsplit('.', 1)
+        filename = f"{base}_{i}.{ext}"
         with open(filename, "r") as f:
             header = True
             for line in f:

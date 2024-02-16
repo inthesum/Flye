@@ -54,17 +54,20 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 
 	_progress.setFinalCount(fileLength);
 
-	_consensusFile.open(outConsensus);
-	if (!_consensusFile.is_open())
-	{
-		throw std::runtime_error("Error opening consensus file");
-	}
+//	_consensusFile.open(outConsensus);
+//	if (!_consensusFile.is_open())
+//	{
+//		throw std::runtime_error("Error opening consensus file");
+//	}
 
 	std::vector<std::thread> threads(numThreads);
 	for (size_t i = 0; i < threads.size(); ++i)
 	{
 //		threads[i] = std::thread(&BubbleProcessor::parallelWorker, this);
-        threads[i] = std::thread(&BubbleProcessor::parallelWorker, this, outConsensus + std::to_string(i));
+        std::string filename = outConsensus;
+        size_t dotPos = filename.find('.');
+        filename.insert(dotPos, "_" + std::to_string(i));
+        threads[i] = std::thread(&BubbleProcessor::parallelWorker, this, filename);
 	}
 	for (size_t i = 0; i < threads.size(); ++i)
 	{
@@ -74,7 +77,7 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 }
 
 
-void BubbleProcessor::parallelWorker(const std::string& outFile)
+void BubbleProcessor::parallelWorker(const std::string outFile)
 {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -138,11 +141,12 @@ void BubbleProcessor::parallelWorker(const std::string& outFile)
                 duration = end - start;
                 std::cout << std::endl;
                 std::cout << "thread id: " << threadId << std::endl;
-                std::cout << "number of bubbles: " << numBubbles << std::endl;
-                std::cout << "number of polished bubbles: " << numBubblesPolished << std::endl;
+//                std::cout << "output file: " << outFile << std::endl;
+//                std::cout << "number of bubbles: " << numBubbles << std::endl;
+//                std::cout << "number of polished bubbles: " << numBubblesPolished << std::endl;
                 std::cout << "parallelWorker: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
                 std::cout << "waiting for read: " << std::fixed << std::setprecision(2) << waitReadDuration.count() << " seconds" << std::endl;
-                std::cout << "waiting for write: " << std::fixed << std::setprecision(2) << waitWriteDuration.count() << " seconds" << std::endl;
+//                std::cout << "waiting for write: " << std::fixed << std::setprecision(2) << waitWriteDuration.count() << " seconds" << std::endl;
                 std::cout << "cache bubbles: " << std::fixed << std::setprecision(2) << cacheBubblesDuration.count() << " seconds" << std::endl;
                 std::cout << "write bubbles: " << std::fixed << std::setprecision(2) << writeBubblesDuration.count() << " seconds" << std::endl;
                 std::cout << "_generalPolisher: " << std::fixed << std::setprecision(2) << generalPolisherDuration.count() << " seconds" << std::endl;
@@ -188,9 +192,12 @@ void BubbleProcessor::parallelWorker(const std::string& outFile)
             fixerDuration += fixerEnd - fixerStart;
         }
 
+        auto startWriting = std::chrono::high_resolution_clock::now();
         consensusFile << ">" << bubble.header << " " << bubble.position
                       << " " << bubble.branches.size() << " " << bubble.subPosition << std::endl
                       << bubble.candidate << std::endl;
+        auto endWriting = std::chrono::high_resolution_clock::now();
+        writeBubblesDuration += endWriting - startWriting;
 
 //        _postprocessBubbles.push_back(bubble);
 //
@@ -217,15 +224,15 @@ void BubbleProcessor::parallelWorker(const std::string& outFile)
 }
 
 
-void BubbleProcessor::writeBubbles(const std::vector<Bubble>& bubbles)
-{
-	for (auto& bubble : bubbles)
-	{
-		_consensusFile << ">" << bubble.header << " " << bubble.position
-			 		   << " " << bubble.branches.size() << " " << bubble.subPosition << std::endl
-			 		   << bubble.candidate << std::endl;
-	}
-}
+//void BubbleProcessor::writeBubbles(const std::vector<Bubble>& bubbles)
+//{
+//	for (auto& bubble : bubbles)
+//	{
+//		_consensusFile << ">" << bubble.header << " " << bubble.position
+//			 		   << " " << bubble.branches.size() << " " << bubble.subPosition << std::endl
+//			 		   << bubble.candidate << std::endl;
+//	}
+//}
 
 void BubbleProcessor::enableVerboseOutput(const std::string& filename)
 {
