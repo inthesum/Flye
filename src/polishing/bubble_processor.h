@@ -30,7 +30,7 @@ public:
 	void enableVerboseOutput(const std::string& filename);
 
 private:
-	void parallelWorker();
+	void parallelWorker(const std::string& outFile);
 	void cacheBubbles(int numBubbles);
 	void writeBubbles(const std::vector<Bubble>& bubbles);
 	void writeLog(const std::vector<Bubble>& bubbles);

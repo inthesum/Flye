@@ -135,7 +135,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         logger.info("Correcting bubbles")
         _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
                         consensus_out, num_threads, output_progress, use_hopo)
-        polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out)
+        polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out, num_threads)
         fp.write_fasta_dict(polished_fasta, polished_file)
 
         end_time = time.time()
@@ -147,7 +147,10 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
 
         #Cleanup
         os.remove(bubbles_file)
-        os.remove(consensus_out)
+        for j in range(num_threads):
+            filename = consensus_out + str(j)
+            os.remove(filename)
+
         if not bam_input:
             os.remove(alignment_file)
 
@@ -380,27 +383,29 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
         raise PolishException(str(e))
 
 
-def _compose_sequence(consensus_file):
+def _compose_sequence(consensus_file, num_threads):
     """
     Concatenates bubbles consensuses into genome
     """
     consensuses = defaultdict(list)
     coverage = defaultdict(list)
-    with open(consensus_file, "r") as f:
-        header = True
-        for line in f:
-            if header:
-                tokens = line.strip().split(" ")
-                if len(tokens) != 4:
-                    raise Exception("Bubble format error")
+    for i in range(num_threads):
+        filename = consensus_file + str(i)
+        with open(filename, "r") as f:
+            header = True
+            for line in f:
+                if header:
+                    tokens = line.strip().split(" ")
+                    if len(tokens) != 4:
+                        raise Exception("Bubble format error")
 
-                ctg_id = tokens[0][1:]
-                ctg_pos = int(tokens[1])
-                coverage = int(tokens[2])
-                ctg_sub_pos = int(tokens[3])
-            else:
-                consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
-            header = not header
+                    ctg_id = tokens[0][1:]
+                    ctg_pos = int(tokens[1])
+                    coverage = int(tokens[2])
+                    ctg_sub_pos = int(tokens[3])
+                else:
+                    consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
+                header = not header
 
     polished_fasta = {}
     polished_stats = {}
