@@ -105,6 +105,12 @@ int polisher_main(int argc, char* argv[])
 				   quiet, enableHopo))
 		return 1;
 
+//    std::cout << "bubblesFile: " << bubblesFile << std::endl;
+//    std::cout << "scoringMatrix: " << scoringMatrix << std::endl;
+//    std::cout << "hopoMatrix: " << hopoMatrix << std::endl;
+//    std::cout << "outConsensus: " << outConsensus << std::endl;
+//    std::cout << "outVerbose: " << outVerbose << std::endl;
+
 	BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo);
 	if (!outVerbose.empty())
 		bp.enableVerboseOutput(outVerbose);

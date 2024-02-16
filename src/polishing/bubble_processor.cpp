@@ -116,11 +116,9 @@ void BubbleProcessor::parallelWorker()
                     _writeMutex.lock();
                     auto endWaiting = std::chrono::high_resolution_clock::now();
                     waitWriteDuration += endWaiting - startWaiting;
-
-                    for(const auto bubble : _postprocessBubbles) {
-                        this->writeBubbles({bubble});
-                        if (_verbose) this->writeLog({bubble});
-                    }
+                    
+                    this->writeBubbles(_postprocessBubbles);
+                    if (_verbose) this->writeLog(_postprocessBubbles);
                     _writeMutex.unlock();
                     _postprocessBubbles.clear();
                 }
@@ -139,8 +137,8 @@ void BubbleProcessor::parallelWorker()
                 std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_dinucFixer: " << std::fixed << std::setprecision(2) << fixerDuration.count() << " seconds" << std::endl;
 
-                std::cout << "polish closest branches: " << std::fixed << std::setprecision(2) << polishClosestBranchesDuration.count() << " seconds" << std::endl;
-                std::cout << "polish all branches: " << std::fixed << std::setprecision(2) << polishAllBranchesDuration.count() << " seconds" << std::endl;
+//                std::cout << "polish closest branches: " << std::fixed << std::setprecision(2) << polishClosestBranchesDuration.count() << " seconds" << std::endl;
+//                std::cout << "polish all branches: " << std::fixed << std::setprecision(2) << polishAllBranchesDuration.count() << " seconds" << std::endl;
 
                 _readMutex.unlock();
 
@@ -186,10 +184,8 @@ void BubbleProcessor::parallelWorker()
             endWaiting = std::chrono::high_resolution_clock::now();
             waitWriteDuration += endWaiting - startWaiting;
 
-            for(const auto bubble : _postprocessBubbles) {
-                this->writeBubbles({bubble});
-                if (_verbose) this->writeLog({bubble});
-            }
+            this->writeBubbles(_postprocessBubbles);
+            if (_verbose) this->writeLog(_postprocessBubbles);
             _writeMutex.unlock();
             _postprocessBubbles.clear();
         }
