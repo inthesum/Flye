@@ -125,8 +125,6 @@ void BubbleProcessor::parallelWorker()
                     _postprocessBubbles.clear();
                 }
 
-                _readMutex.unlock();
-
                 auto end = std::chrono::high_resolution_clock::now(); // End timer
                 duration = end - start;
                 std::cout << std::endl;
@@ -143,6 +141,8 @@ void BubbleProcessor::parallelWorker()
 
                 std::cout << "polish closest branches: " << std::fixed << std::setprecision(2) << polishClosestBranchesDuration.count() << " seconds" << std::endl;
                 std::cout << "polish all branches: " << std::fixed << std::setprecision(2) << polishAllBranchesDuration.count() << " seconds" << std::endl;
+
+                _readMutex.unlock();
 
                 return;
             }
