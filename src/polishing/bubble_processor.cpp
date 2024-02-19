@@ -95,7 +95,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     std::chrono::duration<double> homoPolisherDuration(0);
     std::chrono::duration<double> fixerDuration(0);
     std::chrono::duration<double> waitReadDuration(0);
-    std::chrono::duration<double> waitWriteDuration(0);
+//    std::chrono::duration<double> waitWriteDuration(0);
     std::chrono::duration<double> writeBubblesDuration(0);
 
     std::chrono::duration<double> polishClosestBranchesDuration(0);
