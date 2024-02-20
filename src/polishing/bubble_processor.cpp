@@ -185,9 +185,12 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 fixerDuration += fixerEnd - fixerStart;
             }
 
+            auto startWriting = std::chrono::high_resolution_clock::now();
             bufferedBubbles << ">" << bubble.header << " " << bubble.position
                             << " " << bubble.branches.size() << " " << bubble.subPosition << std::endl
                             << bubble.candidate << std::endl;
+            auto endWriting = std::chrono::high_resolution_clock::now();
+            writeBubblesDuration += endWriting - startWriting;
         }
 
         if (counter >= BATCH_SIZE * 10) {
