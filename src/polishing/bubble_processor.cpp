@@ -39,10 +39,7 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 								const std::string& outConsensus,
 			   					int numThreads)
 {
-	_preprocessBubbles.clear();
-	_preprocessBubbles.reserve(BUBBLES_CACHE);
-
-	size_t fileLength = fileSize(inBubbles);
+    size_t fileLength = fileSize(inBubbles);
 	if (!fileLength)
 	{
 		throw std::runtime_error("Empty bubbles file!");
@@ -99,7 +96,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     int numBubbles = 0;
     int numBubblesPolished = 0;
     int counter = 0;
-    std::vector<Bubble> bubbles;
+    std::queue<Bubble> bubbles;
     std::ostringstream bufferedBubbles;
 
     auto startWaiting = std::chrono::high_resolution_clock::now();
@@ -150,9 +147,9 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
         }
 
         for(int i=0; i<BATCH_SIZE && !_preprocessBubbles.empty(); i++) {
-            Bubble bubble = _preprocessBubbles.back();
-            bubbles.push_back(bubble);
-            _preprocessBubbles.pop_back();
+            Bubble bubble = _preprocessBubbles.front();
+            bubbles.push(bubble);
+            _preprocessBubbles.pop();
             numBubbles++;
             counter++;
         }
@@ -160,8 +157,8 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
         _readMutex.unlock();
 
         while(!bubbles.empty()) {
-            Bubble bubble = bubbles.back();
-            bubbles.pop_back();
+            Bubble bubble = bubbles.front();
+            bubbles.pop();
             
             if (bubble.candidate.size() < MAX_BUBBLE &&
                 bubble.branches.size() > 1)
@@ -267,7 +264,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
 			throw std::runtime_error("Error parsing bubbles file");
 		}
 
-		_preprocessBubbles.push_back(std::move(bubble));
+        _preprocessBubbles.push(std::move(bubble));
 		++readBubbles;
 	}
 

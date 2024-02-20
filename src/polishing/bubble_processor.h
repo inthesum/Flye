@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <queue>
 #include <cmath>
 #include <mutex>
 #include <fstream>
@@ -45,7 +46,7 @@ private:
 
 	ProgressPercent 		  _progress;
     std::mutex                _readMutex;
-	std::vector<Bubble>		  _preprocessBubbles;
+	std::queue<Bubble>		  _preprocessBubbles;
 
     std::ifstream			  _bubblesFile;
     std::ofstream			  _logFile;
