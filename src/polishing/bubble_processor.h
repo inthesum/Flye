@@ -31,12 +31,8 @@ public:
 	void enableVerboseOutput(const std::string& filename);
 
 private:
-	void parallelWorker(const std::string outFile);
-	void cacheBubbles(int numBubbles);
-	void writeBubbles(const std::vector<Bubble>& bubbles);
-	void writeLog(const std::vector<Bubble>& bubbles);
-
-	const int BUBBLES_CACHE = 100;
+	void parallelWorker(const std::string inFile, const std::string outFile);
+    void cacheBubbles(std::ifstream& bubblesFile, std::queue<Bubble>& bubbles, int maxRead);
 
 	const SubstitutionMatrix  _subsMatrix;
 	const HopoMatrix 		  _hopoMatrix;
@@ -44,9 +40,7 @@ private:
 	const HomoPolisher 		  _homoPolisher;
 	const DinucleotideFixer	  _dinucFixer;
 
-	ProgressPercent 		  _progress;
-    std::mutex                _readMutex;
-	std::queue<Bubble>		  _preprocessBubbles;
+    std::mutex                _Mutex;
 
     std::ifstream			  _bubblesFile;
     std::ofstream			  _logFile;

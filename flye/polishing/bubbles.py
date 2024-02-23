@@ -53,11 +53,15 @@ class Bubble(object):
 
 
 def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
-                   results_queue, error_queue, bubbles_file,
-                   bubbles_file_lock):
+                   results_queue, error_queue, bubbles_file, thread_id):
     """
     Will run in parallel
     """
+    filename = bubbles_file
+    base, ext = filename.rsplit('.', 1)
+    filename = f"{base}_{thread_id}.{ext}"
+    out_stream = open(filename, "w")
+
     try:
         while True:
             ctg_region = chunk_feeder.get_chunk()
@@ -93,8 +97,7 @@ def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
             for b in ctg_bubbles:
                 b.position += ctg_region.start
 
-            with bubbles_file_lock:
-                _output_bubbles(ctg_bubbles, open(bubbles_file, "a"))
+            _output_bubbles(ctg_bubbles, out_stream)
             results_queue.put((ctg_id, len(ctg_bubbles), num_long_bubbles,
                                num_empty, num_long_branch, aln_errors,
                                mean_cov))
@@ -123,11 +126,10 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
 
     results_queue = manager.Queue()
     error_queue = manager.Queue()
-    bubbles_out_lock = multiprocessing.Lock()
     #bubbles_out_handle = open(bubbles_out, "w")
 
     process_in_parallel(_thread_worker, (aln_reader, chunk_feeder, contigs_info, err_mode,
-                         results_queue, error_queue, bubbles_out, bubbles_out_lock), num_proc)
+                         results_queue, error_queue, bubbles_out), num_proc)
     #_thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
     #               results_queue, error_queue, bubbles_out, bubbles_out_lock)
     if not error_queue.empty():

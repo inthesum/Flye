@@ -36,8 +36,9 @@ def process_in_parallel(function, arguments, num_proc):
     #making sure the main process catches SIGINT
     threads = []
     orig_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    for _ in range(num_proc):
-        threads.append(multiprocessing.Process(target=function, args=arguments))
+    for thread_id in range(num_proc):
+        arguments_with_id = arguments + (thread_id,)
+        threads.append(multiprocessing.Process(target=function, args=arguments_with_id))
     signal.signal(signal.SIGINT, orig_sigint)
 
     for t in threads:
