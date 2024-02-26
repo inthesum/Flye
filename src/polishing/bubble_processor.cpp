@@ -95,7 +95,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     const int BATCH_SIZE = 10;
     int numBubbles = 0;
     int numBubblesPolished = 0;
-    int counter = 0;
+//    int counter = 0;
     std::queue<Bubble> bubbles;
     std::ostringstream bufferedBubbles;
 
@@ -115,12 +115,17 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
 
             if(_preprocessBubbles.empty())
             {
-                if (counter != 0) {
-                    auto startWriting = std::chrono::high_resolution_clock::now();
-                    consensusFile << bufferedBubbles.str();
-                    auto endWriting = std::chrono::high_resolution_clock::now();
-                    writeBubblesDuration += endWriting - startWriting;
-                }
+//                if (counter != 0) {
+//                    auto startWriting = std::chrono::high_resolution_clock::now();
+//                    consensusFile << bufferedBubbles.str();
+//                    auto endWriting = std::chrono::high_resolution_clock::now();
+//                    writeBubblesDuration += endWriting - startWriting;
+//                }
+
+                auto startWriting = std::chrono::high_resolution_clock::now();
+                consensusFile << bufferedBubbles.str();
+                auto endWriting = std::chrono::high_resolution_clock::now();
+                writeBubblesDuration += endWriting - startWriting;
 
                 auto end = std::chrono::high_resolution_clock::now(); // End timer
                 duration = end - start;
@@ -150,7 +155,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
             bubbles.push(bubble);
             _preprocessBubbles.pop();
             numBubbles++;
-            counter++;
+//            counter++;
         }
 
         _readMutex.unlock();
@@ -192,15 +197,15 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
             writeBubblesDuration += endWriting - startWriting;
         }
 
-        if (counter >= BATCH_SIZE * 100) {
-            auto startWriting = std::chrono::high_resolution_clock::now();
-            consensusFile << bufferedBubbles.str();
-            auto endWriting = std::chrono::high_resolution_clock::now();
-            writeBubblesDuration += endWriting - startWriting;
-
-            counter = 0;
-            bufferedBubbles.str("");
-        }
+//        if (counter >= BATCH_SIZE * 100) {
+//            auto startWriting = std::chrono::high_resolution_clock::now();
+//            consensusFile << bufferedBubbles.str();
+//            auto endWriting = std::chrono::high_resolution_clock::now();
+//            writeBubblesDuration += endWriting - startWriting;
+//
+//            counter = 0;
+//            bufferedBubbles.str("");
+//        }
 
         startWaiting = std::chrono::high_resolution_clock::now();
         _readMutex.lock();
