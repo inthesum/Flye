@@ -109,7 +109,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
         if (_preprocessBubbles.empty())
         {
             auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
-            this->cacheBubbles(BUBBLES_CACHE);
+            this->cacheBubbles(BATCH_SIZE * 100);
             auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
             cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
 
@@ -126,7 +126,6 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 duration = end - start;
                 std::cout << std::endl;
                 std::cout << "thread id: " << threadId << std::endl;
-//                std::cout << "output file: " << outFile << std::endl;
                 std::cout << "number of bubbles: " << numBubbles << std::endl;
                 std::cout << "number of polished bubbles: " << numBubblesPolished << std::endl;
                 std::cout << "parallelWorker: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
@@ -193,7 +192,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
             writeBubblesDuration += endWriting - startWriting;
         }
 
-        if (counter >= BATCH_SIZE * 10) {
+        if (counter >= BATCH_SIZE * 100) {
             auto startWriting = std::chrono::high_resolution_clock::now();
             consensusFile << bufferedBubbles.str();
             auto endWriting = std::chrono::high_resolution_clock::now();

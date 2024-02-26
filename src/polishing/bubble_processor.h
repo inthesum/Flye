@@ -36,8 +36,6 @@ private:
     void writeBubbles(const std::vector<Bubble>& bubbles);
     void writeLog(const std::vector<Bubble>& bubbles);
 
-    const int BUBBLES_CACHE = 100;
-
     const SubstitutionMatrix  _subsMatrix;
     const HopoMatrix 		  _hopoMatrix;
     const GeneralPolisher 	  _generalPolisher;
