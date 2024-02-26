@@ -20,31 +20,37 @@
 #include "dinucleotide_fixer.h"
 
 
-class BubbleProcessor 
+class BubbleProcessor
 {
 public:
-	BubbleProcessor(const std::string& subsMatPath,
-					const std::string& hopoMatrixPath,
-					bool  showProgress, bool hopoEndabled);
-	void polishAll(const std::string& inBubbles, const std::string& outConsensus,
-				   int numThreads);
-	void enableVerboseOutput(const std::string& filename);
+    BubbleProcessor(const std::string& subsMatPath,
+                    const std::string& hopoMatrixPath,
+                    bool  showProgress, bool hopoEndabled);
+    void polishAll(const std::string& inBubbles, const std::string& outConsensus,
+                   int numThreads);
+    void enableVerboseOutput(const std::string& filename);
 
 private:
-	void parallelWorker(const std::string inFile, const std::string outFile);
-    void cacheBubbles(std::ifstream& bubblesFile, std::queue<Bubble>& bubbles, int maxRead);
+    void parallelWorker(const std::string outFile);
+    void cacheBubbles(int numBubbles);
+    void writeBubbles(const std::vector<Bubble>& bubbles);
+    void writeLog(const std::vector<Bubble>& bubbles);
 
-	const SubstitutionMatrix  _subsMatrix;
-	const HopoMatrix 		  _hopoMatrix;
-	const GeneralPolisher 	  _generalPolisher;
-	const HomoPolisher 		  _homoPolisher;
-	const DinucleotideFixer	  _dinucFixer;
+    const int BUBBLES_CACHE = 100;
 
-    std::mutex                _Mutex;
+    const SubstitutionMatrix  _subsMatrix;
+    const HopoMatrix 		  _hopoMatrix;
+    const GeneralPolisher 	  _generalPolisher;
+    const HomoPolisher 		  _homoPolisher;
+    const DinucleotideFixer	  _dinucFixer;
+
+    ProgressPercent 		  _progress;
+    std::mutex                _readMutex;
+    std::queue<Bubble>		  _preprocessBubbles;
 
     std::ifstream			  _bubblesFile;
     std::ofstream			  _logFile;
-	bool					  _verbose;
-	bool 					  _showProgress;
-	bool					  _hopoEnabled;
+    bool					  _verbose;
+    bool 					  _showProgress;
+    bool					  _hopoEnabled;
 };
