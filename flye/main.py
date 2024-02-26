@@ -325,7 +325,7 @@ class JobPolishing(Job):
         contigs, stats = \
             pol.polish(self.in_contigs, self.args.reads, self.polishing_dir,
                        self.args.num_iters, self.args.threads, self.args.platform,
-                       self.args.read_type, profile_file, output_progress=True)
+                       self.args.read_type, profile_file, self.log_file, output_progress=True)
         end_time = time.time()
         elapsed_time_seconds = end_time - start_time
         total_time += elapsed_time_seconds
@@ -472,7 +472,7 @@ def _run_polisher_only(args):
 
     pol.polish(args.polish_target, args.reads, args.out_dir,
                args.num_iters, args.threads, args.platform,
-               args.read_type, profile_file, output_progress=True)
+               args.read_type, profile_file, args.log_file, output_progress=True)
     logger.info("Done!")
 
 

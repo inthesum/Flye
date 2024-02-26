@@ -133,20 +133,17 @@ def combine_files(base_filename, total_threads):
         except FileNotFoundError:
             print(f"File {filename} not found. Skipping...")
 
-    average_size = total_size / total_threads if total_threads > 0 else 0
-
-    if average_size < 1024:
-        size_str = f"{average_size:.2f} bytes"
-    elif average_size < 1024 * 1024:
-        size_str = f"{average_size / 1024:.2f} KB"
-    elif average_size < 1024 * 1024 * 1024:
-        size_str = f"{average_size / (1024 * 1024):.2f} MB"
+    if total_size < 1024:
+        size_str = f"{total_size:.2f} bytes"
+    elif total_size < 1024 * 1024:
+        size_str = f"{total_size / 1024:.2f} KB"
+    elif total_size < 1024 * 1024 * 1024:
+        size_str = f"{total_size / (1024 * 1024):.2f} MB"
     else:
-        size_str = f"{average_size / (1024 * 1024 * 1024):.2f} GB"
-
-    print(f"Average file size: {size_str}")
+        size_str = f"{total_size / (1024 * 1024 * 1024):.2f} GB"
 
     print(f"Files combined successfully into {base_filename}")
+    print(f"file size: {size_str}")
 
 
 def make_bubbles(alignment_path, contigs_info, contigs_path,

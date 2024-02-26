@@ -52,7 +52,7 @@ def check_binaries():
 
 
 def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platform,
-           read_type, profile_file, output_progress):
+           read_type, profile_file, log_file, output_progress):
     """
     High-level polisher interface
     """
@@ -134,7 +134,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
 
         logger.info("Correcting bubbles")
         _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
-                        consensus_out, num_threads, output_progress, use_hopo)
+                        consensus_out, num_threads, output_progress, use_hopo, log_file)
         polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out, num_threads)
         fp.write_fasta_dict(polished_fasta, polished_file)
 
@@ -368,12 +368,14 @@ def filter_by_coverage(args, stats_in, contigs_in, stats_out, contigs_out):
 
 
 def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
-                    consensus_out, num_threads, output_progress, use_hopo):
+                    consensus_out, num_threads, output_progress, use_hopo, log_file):
     """
     Invokes polishing binary
     """
+    logger.info("polishing bubbles")
+    logger.debug("-----Begin polishing log------")
     cmdline = [POLISH_BIN, "polisher", "--bubbles", bubbles_in, "--subs-mat", subs_matrix,
-               "--hopo-mat", hopo_matrix, "--out", consensus_out,
+               "--hopo-mat", hopo_matrix, "--out", consensus_out, "--log", log_file,
                "--threads", str(num_threads)]
     if not output_progress:
         cmdline.append("--quiet")
@@ -382,6 +384,7 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
         cmdline.append("--enable-hopo")
 
     try:
+        logger.debug("Running: " + " ".join(cmdline))
         subprocess.check_call(cmdline)
     except subprocess.CalledProcessError as e:
         if e.returncode == -9:
