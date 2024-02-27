@@ -39,6 +39,21 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
                                 const std::string& outConsensus,
                                 int numThreads)
 {
+    int counter = 0;
+    std::cout << "size of _subsMatrix: " << _subsMatrix._matrix.size() << std::endl;
+    for(int i=0; i<_subsMatrix.MAX_CHAR; i++) {
+        for(int j=0; j<_subsMatrix.MAX_CHAR; j++) {
+            if(_subsMatrix._matrix[i * _subsMatrix.MAX_CHAR + j] != 0) {
+                counter++;
+                std::cout << "row = " << static_cast<char>(i) << std::endl;
+                std::cout << "col = " << static_cast<char>(j) << std::endl;
+                std::cout << _subsMatrix._matrix[i * _subsMatrix.MAX_CHAR + j] << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    }
+    std::cout << "counter =  " << counter << std::endl;
+
     size_t fileLength = fileSize(inBubbles);
     if (!fileLength)
     {
@@ -64,6 +79,7 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
     {
         threads[i].join();
     }
+
     if (_showProgress) _progress.setDone();
 }
 
@@ -88,11 +104,15 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     std::chrono::duration<double> waitReadDuration(0);
     std::chrono::duration<double> writeBubblesDuration(0);
 
-//    std::chrono::duration<double> polishClosestBranchesDuration(0);
-//    std::chrono::duration<double> polishAllBranchesDuration(0);
+    std::chrono::duration<double> optimizeDuration(0);
+    std::chrono::duration<double> makeStepDuration(0);
+    std::chrono::duration<double> alignmentDuration(0);
+    std::chrono::duration<double> deletionDuration(0);
+    std::chrono::duration<double> insertionDuration(0);
+    std::chrono::duration<double> substitutionDuration(0);
 
     const int MAX_BUBBLE = 5000;
-    const int BATCH_SIZE = 100;
+    const int BATCH_SIZE = 10;
     int numBubbles = 0;
     int numBubblesPolished = 0;
     int counter = 0;
@@ -136,8 +156,12 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_dinucFixer: " << std::fixed << std::setprecision(2) << fixerDuration.count() << " seconds" << std::endl;
 
-//                std::cout << "polish closest branches: " << std::fixed << std::setprecision(2) << polishClosestBranchesDuration.count() << " seconds" << std::endl;
-//                std::cout << "polish all branches: " << std::fixed << std::setprecision(2) << polishAllBranchesDuration.count() << " seconds" << std::endl;
+                std::cout << "optimize: " << std::fixed << std::setprecision(2) << optimizeDuration.count() << " seconds" << std::endl;
+                std::cout << "makeStep: " << std::fixed << std::setprecision(2) << makeStepDuration.count() << " seconds" << std::endl;
+                std::cout << "alignment: " << std::fixed << std::setprecision(2) << alignmentDuration.count() << " seconds" << std::endl;
+                std::cout << "deletion: " << std::fixed << std::setprecision(2) << deletionDuration.count() << " seconds" << std::endl;
+                std::cout << "insertion: " << std::fixed << std::setprecision(2) << insertionDuration.count() << " seconds" << std::endl;
+                std::cout << "substitution: " << std::fixed << std::setprecision(2) << substitutionDuration.count() << " seconds" << std::endl;
 
                 _readMutex.unlock();
 
@@ -165,8 +189,14 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 numBubblesPolished++;
 
                 auto generalPolisherStart = std::chrono::high_resolution_clock::now();
-                _generalPolisher.polishBubble(bubble);
-//            _generalPolisher.polishBubble(bubble, polishClosestBranchesDuration, polishAllBranchesDuration);
+//                _generalPolisher.polishBubble(bubble);
+                _generalPolisher.polishBubble(bubble,
+                                              optimizeDuration,
+                                              makeStepDuration,
+                                              alignmentDuration,
+                                              deletionDuration,
+                                              insertionDuration,
+                                              substitutionDuration);
                 auto generalPolisherEnd = std::chrono::high_resolution_clock::now();
                 generalPolisherDuration += generalPolisherEnd - generalPolisherStart;
 

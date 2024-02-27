@@ -23,7 +23,7 @@ public:
 		return _matrix[(size_t)v * MAX_CHAR + (size_t)w];
 	}
 	
-private:
+//private:
 	void loadMatrix(const std::string& path);
 	void setScore(char v, char w, AlnScoreType score)
 	{

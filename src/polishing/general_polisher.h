@@ -17,14 +17,25 @@ public:
 		_subsMatrix(subsMatrix)
 	{}
     void polishBubble(Bubble& bubble) const;
-	void polishBubble(Bubble& bubble,
-                      std::chrono::duration<double>& polishClosestBranchesDuration,
-                      std::chrono::duration<double>& polishAllBranchesDuration) const;
+    void polishBubble(Bubble& bubble,
+                      std::chrono::duration<double>& optimizeDuration,
+                      std::chrono::duration<double>& makeStepDuration,
+                      std::chrono::duration<double>& alignmentDuration,
+                      std::chrono::duration<double>& deletionDuration,
+                      std::chrono::duration<double>& insertionDuration,
+                      std::chrono::duration<double>& substitutionDuration) const;
 
 private:
 	StepInfo makeStep(const std::string& candidate, 
 					  const std::vector<std::string>& branches,
 					  Alignment& align) const;
+    StepInfo makeStep(const std::string& candidate,
+                      const std::vector<std::string>& branches,
+                      Alignment& align,
+                      std::chrono::duration<double>& alignmentDuration,
+                      std::chrono::duration<double>& deletionDuration,
+                      std::chrono::duration<double>& insertionDuration,
+                      std::chrono::duration<double>& substitutionDuration) const;
 
 	const SubstitutionMatrix& _subsMatrix;
 };
