@@ -60,6 +60,22 @@ public:
 	size_t nrows() const {return _rows;}
 	size_t ncols() const {return _cols;}
 
+    std::vector<T> getRow(size_t rowIndex) const
+    {
+        if (rowIndex >= _rows)
+            throw std::out_of_range("Row index out of range");
+
+        std::vector<T> row;
+        row.reserve(_cols); // Reserve space for efficiency
+
+        for (size_t j = 0; j < _cols; ++j)
+        {
+            row.push_back(at(rowIndex, j));
+        }
+
+        return row;
+    }
+
 private:
 	size_t _rows;
 	size_t _cols;

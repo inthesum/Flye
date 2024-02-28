@@ -4,6 +4,9 @@ CXXFLAGS += -Wall -Wextra -pthread -std=c++11 -g
 CXXFLAGS += -Wno-missing-field-initializers
 LDFLAGS += -pthread -std=c++11 -rdynamic
 
+# Add flags for SIMD support (AVX2)
+CXXFLAGS += -mavx2
+
 MODULES_BIN := ${BIN_DIR}/flye-modules
 
 profile: CXXFLAGS += -pg

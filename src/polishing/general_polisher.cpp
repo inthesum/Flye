@@ -92,6 +92,8 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 			if (rec.score > 0)
 			{
 				std::cerr << "Overflow!\n";
+                std::cerr << rec.score << std::endl;
+
 				break;
 			}
 			if (iterNum++ > 10 * candidate.size())
@@ -274,7 +276,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
 		for (char letter : alphabet)
 		{
 			AlnScoreType score = align.addInsertion(pos + 1, letter, branches);
-			if (score > stepResult.score) 
+			if (score > stepResult.score)
 			{
 				stepResult.score = score;
 				stepResult.sequence = candidate;

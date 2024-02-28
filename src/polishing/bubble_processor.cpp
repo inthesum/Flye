@@ -39,20 +39,20 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
                                 const std::string& outConsensus,
                                 int numThreads)
 {
-    int counter = 0;
-    std::cout << "size of _subsMatrix: " << _subsMatrix._matrix.size() << std::endl;
-    for(int i=0; i<_subsMatrix.MAX_CHAR; i++) {
-        for(int j=0; j<_subsMatrix.MAX_CHAR; j++) {
-            if(_subsMatrix._matrix[i * _subsMatrix.MAX_CHAR + j] != 0) {
-                counter++;
-                std::cout << "row = " << static_cast<char>(i) << std::endl;
-                std::cout << "col = " << static_cast<char>(j) << std::endl;
-                std::cout << _subsMatrix._matrix[i * _subsMatrix.MAX_CHAR + j] << std::endl;
-                std::cout << std::endl;
-            }
-        }
-    }
-    std::cout << "counter =  " << counter << std::endl;
+//    int counter = 0;
+//    std::cout << "size of _subsMatrix: " << _subsMatrix._matrix.size() << std::endl;
+//    for(int i=0; i<_subsMatrix.MAX_CHAR; i++) {
+//        for(int j=0; j<_subsMatrix.MAX_CHAR; j++) {
+//            if(_subsMatrix._matrix[i * _subsMatrix.MAX_CHAR + j] != 0) {
+//                counter++;
+//                std::cout << "row = " << static_cast<char>(i) << std::endl;
+//                std::cout << "col = " << static_cast<char>(j) << std::endl;
+//                std::cout << _subsMatrix._matrix[i * _subsMatrix.MAX_CHAR + j] << std::endl;
+//                std::cout << std::endl;
+//            }
+//        }
+//    }
+//    std::cout << "counter =  " << counter << std::endl;
 
     size_t fileLength = fileSize(inBubbles);
     if (!fileLength)

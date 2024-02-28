@@ -18,7 +18,7 @@ class SubstitutionMatrix
 {
 public:
 	SubstitutionMatrix(const std::string& path);
-	AlnScoreType getScore(char v, char w) const
+    AlnScoreType getScore(char v, char w) const
 	{
 		return _matrix[(size_t)v * MAX_CHAR + (size_t)w];
 	}
