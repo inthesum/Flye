@@ -60,21 +60,14 @@ public:
 	size_t nrows() const {return _rows;}
 	size_t ncols() const {return _cols;}
 
-    std::vector<T> getRow(size_t rowIndex) const
-    {
-        if (rowIndex >= _rows)
-            throw std::out_of_range("Row index out of range");
-
-        std::vector<T> row;
-        row.reserve(_cols); // Reserve space for efficiency
-
-        for (size_t j = 0; j < _cols; ++j)
-        {
-            row.push_back(at(rowIndex, j));
-        }
-
-        return row;
-    }
+//    const T* data() const { return _data; }
+//    const T* data(size_t row, size_t col) const
+//    {
+//        if (row >= _rows || col >= _cols) {
+//            throw std::out_of_range("Row or column index out of range");
+//        }
+//        return &_data[row * _cols + col];
+//    }
 
 private:
 	size_t _rows;
