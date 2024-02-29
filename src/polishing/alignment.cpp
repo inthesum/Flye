@@ -51,104 +51,104 @@ __m256i mm256_max_epi64(__m256i a, __m256i b) {
 }
 
 
-AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
-{
-	AlnScoreType finalScore = 0;
-	for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
-	{
-		const ScoreMatrix& forwardScore = _forwardScores[readId];
-		const ScoreMatrix& reverseScore = _reverseScores[readId];
-
-		//Note: We subtract 2 because of zero indexing and an extra added row and column count
-		//unsigned int index = (reverseScore.nrows() - 1) - letterIndex;
-		size_t frontRow = letterIndex - 1;
-		size_t revRow = reverseScore.nrows() - 1 - letterIndex;
-
-		AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
-		for (size_t col = 0; col < forwardScore.ncols(); ++col)
-		{
-			size_t backCol = forwardScore.ncols() - col - 1;
-			AlnScoreType sum = forwardScore.at(frontRow, col) +
-							reverseScore.at(revRow, backCol);
-			maxVal = std::max(maxVal, sum);
-		}
-		finalScore += maxVal;
-	}
-	return finalScore;
-}
-
-
 //AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 //{
-//    AlnScoreType finalScore = 0;
-//    constexpr size_t batchSize = 4; // Use constexpr for batch size
-//    size_t frontRow = letterIndex - 1;
+//	AlnScoreType finalScore = 0;
+//	for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
+//	{
+//		const ScoreMatrix& forwardScore = _forwardScores[readId];
+//		const ScoreMatrix& reverseScore = _reverseScores[readId];
 //
-//    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
-//    {
-//        const ScoreMatrix& forwardScore = _forwardScores[readId];
-//        const ScoreMatrix& reverseScore = _reverseScores[readId];
+//		//Note: We subtract 2 because of zero indexing and an extra added row and column count
+//		//unsigned int index = (reverseScore.nrows() - 1) - letterIndex;
+//		size_t frontRow = letterIndex - 1;
+//		size_t revRow = reverseScore.nrows() - 1 - letterIndex;
 //
-//        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
-//
-//        AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
-//        __m256i maxValues = _mm256_set1_epi64x(maxVal);
-//
-//        size_t cols = forwardScore.ncols();
-//        const size_t alignedReadsN = cols - cols % batchSize;
-//        for (size_t col = 0; col < alignedReadsN; col += batchSize)
-//        {
-//             // Load elements into SIMD vectors
-//            __m256i forwardVals = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1),
-//                    forwardScore.at(frontRow, col)
-//            );
-//
-//            __m256i reverseVals = _mm256_set_epi64x(
-//                    reverseScore.at(revRow, cols - col - 4),
-//                    reverseScore.at(revRow, cols - col - 3),
-//                    reverseScore.at(revRow, cols - col - 2),
-//                    reverseScore.at(revRow, cols - col - 1)
-//            );
-//
-////            __m256i forwardVals = _mm256_loadu_si256((__m256i*)(forwardScore.data(frontRow, col)));
-//
-////            auto data = reverseScore.data(revRow, cols - col - 4);
-////            __m256i reverseVals = _mm256_set_epi64x(
-////                    data[0],
-////                    data[1],
-////                    data[2],
-////                    data[3]
-////            );
-//
-//            // Perform element-wise addition
-//            __m256i sum = _mm256_add_epi64(forwardVals, reverseVals);
-//
-//            // Find the maximum value within the SIMD vector
-//            maxValues = mm256_max_epi64(maxValues, sum);
-//        }
-//
-//        // Store the result
-//        alignas(32) AlnScoreType maxValuesArray[batchSize];
-//        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
-//
-//        // Update maxVal
-//        for (size_t i = 0; i < batchSize; ++i)
-//        {
-//            maxVal = std::max(maxVal, maxValuesArray[i]);
-//        }
-//
-//        for (size_t col = alignedReadsN; col < cols; ++col) {
-//			AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(revRow, cols - col - 1);
+//		AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
+//		for (size_t col = 0; col < forwardScore.ncols(); ++col)
+//		{
+//			size_t backCol = forwardScore.ncols() - col - 1;
+//			AlnScoreType sum = forwardScore.at(frontRow, col) +
+//							reverseScore.at(revRow, backCol);
 //			maxVal = std::max(maxVal, sum);
-//        }
-//
-//        finalScore += maxVal;
-//    }
-//    return finalScore;
+//		}
+//		finalScore += maxVal;
+//	}
+//	return finalScore;
 //}
+
+
+AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
+{
+    AlnScoreType finalScore = 0;
+    constexpr size_t batchSize = 4; // Use constexpr for batch size
+    size_t frontRow = letterIndex - 1;
+
+    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
+    {
+        const ScoreMatrix& forwardScore = _forwardScores[readId];
+        const ScoreMatrix& reverseScore = _reverseScores[readId];
+
+        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+
+        AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
+        __m256i maxValues = _mm256_set1_epi64x(maxVal);
+
+        size_t cols = forwardScore.ncols();
+        const size_t alignedReadsN = cols - cols % batchSize;
+        for (size_t col = 0; col < alignedReadsN; col += batchSize)
+        {
+             // Load elements into SIMD vectors
+            __m256i forwardVals = _mm256_set_epi64x(
+                    forwardScore.at(frontRow, col + 3),
+                    forwardScore.at(frontRow, col + 2),
+                    forwardScore.at(frontRow, col + 1),
+                    forwardScore.at(frontRow, col)
+            );
+
+            __m256i reverseVals = _mm256_set_epi64x(
+                    reverseScore.at(revRow, cols - col - 4),
+                    reverseScore.at(revRow, cols - col - 3),
+                    reverseScore.at(revRow, cols - col - 2),
+                    reverseScore.at(revRow, cols - col - 1)
+            );
+
+//            __m256i forwardVals = _mm256_loadu_si256((__m256i*)(forwardScore.data(frontRow, col)));
+
+//            auto data = reverseScore.data(revRow, cols - col - 4);
+//            __m256i reverseVals = _mm256_set_epi64x(
+//                    data[0],
+//                    data[1],
+//                    data[2],
+//                    data[3]
+//            );
+
+            // Perform element-wise addition
+            __m256i sum = _mm256_add_epi64(forwardVals, reverseVals);
+
+            // Find the maximum value within the SIMD vector
+            maxValues = mm256_max_epi64(maxValues, sum);
+        }
+
+        // Store the result
+        alignas(32) AlnScoreType maxValuesArray[batchSize];
+        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
+
+        // Update maxVal
+        for (size_t i = 0; i < batchSize; ++i)
+        {
+            maxVal = std::max(maxVal, maxValuesArray[i]);
+        }
+
+        for (size_t col = alignedReadsN; col < cols; ++col) {
+			AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(revRow, cols - col - 1);
+			maxVal = std::max(maxVal, sum);
+        }
+
+        finalScore += maxVal;
+    }
+    return finalScore;
+}
 
 
 //AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
@@ -188,115 +188,115 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 //}
 
 
-AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
-										const std::vector<std::string>& reads) const
-{
-	AlnScoreType finalScore = 0;
-    size_t frontRow = letterIndex - 1;
-    AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
-
-    for (size_t readId = 0; readId < reads.size(); ++readId)
-	{
-		const ScoreMatrix& forwardScore = _forwardScores[readId];
-		const ScoreMatrix& reverseScore = _reverseScores[readId];
-
-		size_t revRow = reverseScore.nrows() - 1 - letterIndex;
-
-        size_t cols = reads[readId].size();
-        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
-		for (size_t col = 0; col < cols; ++col)
-		{
-            char readBase = reads[readId][col];
-            AlnScoreType match = forwardScore.at(frontRow, col) + _subsMatrix.getScore(base, readBase);
-			AlnScoreType ins = forwardScore.at(frontRow, col + 1) + baseScoreWithGap;
-            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
-        }
-		finalScore += maxVal;
-	}
-	return finalScore;
-}
-
 //AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 //										const std::vector<std::string>& reads) const
 //{
-//    AlnScoreType finalScore = 0;
+//	AlnScoreType finalScore = 0;
 //    size_t frontRow = letterIndex - 1;
-//    constexpr size_t batchSize = 4; // Use constexpr for batch size
 //    AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
-//    __m256i baseScores = _mm256_set1_epi64x(baseScoreWithGap);
 //
-//    for (size_t readId = 0; readId < reads.size(); ++readId) {
-//        const ScoreMatrix& forwardScore = _forwardScores[readId];
-//        const ScoreMatrix& reverseScore = _reverseScores[readId];
+//    for (size_t readId = 0; readId < reads.size(); ++readId)
+//	{
+//		const ScoreMatrix& forwardScore = _forwardScores[readId];
+//		const ScoreMatrix& reverseScore = _reverseScores[readId];
 //
-//        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+//		size_t revRow = reverseScore.nrows() - 1 - letterIndex;
 //
 //        size_t cols = reads[readId].size();
-//        const size_t alignedReadsN = cols - cols % batchSize;
 //        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
-//        __m256i maxValues = _mm256_set1_epi64x(maxVal);
-//        for (size_t col = 0; col < alignedReadsN; col += batchSize)
-//        {
-//            // Load base scores
-//            __m256i scores = _mm256_set_epi64x(
-//                    _subsMatrix.getScore(base, reads[readId][col + 3]),
-//                    _subsMatrix.getScore(base, reads[readId][col + 2]),
-//                    _subsMatrix.getScore(base, reads[readId][col + 1]),
-//                    _subsMatrix.getScore(base, reads[readId][col])
-//            );
-//
-//            __m256i forwardScoreCurrent = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1),
-//                    forwardScore.at(frontRow, col));
-//
-//            __m256i forwardScoreNext = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 4),
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1));
-//
-//            __m256i reverseScoreNext = _mm256_set_epi64x(
-//                    reverseScore.at(revRow, cols - col - 4),
-//                    reverseScore.at(revRow, cols - col - 3),
-//                    reverseScore.at(revRow, cols - col - 2),
-//                    reverseScore.at(revRow, cols - col - 1));
-//
-//            // Compute match scores
-//            __m256i matchScores = _mm256_add_epi64(forwardScoreCurrent, scores);
-//
-//            // Compute insertion scores
-//            __m256i insertScores = _mm256_add_epi64(forwardScoreNext, baseScores);
-//
-//            // Compute max scores
-//            __m256i maxScores = mm256_max_epi64(matchScores, insertScores);
-//
-//            // Compute sum
-//            __m256i sum = _mm256_add_epi64(reverseScoreNext, maxScores);
-//
-//            // Update max values
-//            maxValues = mm256_max_epi64(maxValues, sum);
-//        }
-//
-//        alignas(32) AlnScoreType maxValuesArray[batchSize];
-//        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
-//        for (size_t i = 0; i < batchSize; ++i)
-//            maxVal = std::max(maxVal, maxValuesArray[i]);
-//
-//        // Process remaining elements without vectorization
-//        for (size_t col = alignedReadsN; col < cols; ++col) {
+//		for (size_t col = 0; col < cols; ++col)
+//		{
 //            char readBase = reads[readId][col];
 //            AlnScoreType match = forwardScore.at(frontRow, col) + _subsMatrix.getScore(base, readBase);
-//            AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
+//			AlnScoreType ins = forwardScore.at(frontRow, col + 1) + baseScoreWithGap;
 //            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
 //        }
-//
-//        finalScore += maxVal;
-//    }
-//
-//    return finalScore;
+//		finalScore += maxVal;
+//	}
+//	return finalScore;
 //}
+
+AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
+										const std::vector<std::string>& reads) const
+{
+    AlnScoreType finalScore = 0;
+    size_t frontRow = letterIndex - 1;
+    constexpr size_t batchSize = 4; // Use constexpr for batch size
+    AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
+    __m256i baseScores = _mm256_set1_epi64x(baseScoreWithGap);
+
+    for (size_t readId = 0; readId < reads.size(); ++readId) {
+        const ScoreMatrix& forwardScore = _forwardScores[readId];
+        const ScoreMatrix& reverseScore = _reverseScores[readId];
+
+        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+
+        size_t cols = reads[readId].size();
+        const size_t alignedReadsN = cols - cols % batchSize;
+        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
+        __m256i maxValues = _mm256_set1_epi64x(maxVal);
+        for (size_t col = 0; col < alignedReadsN; col += batchSize)
+        {
+            // Load base scores
+            __m256i scores = _mm256_set_epi64x(
+                    _subsMatrix.getScore(base, reads[readId][col + 3]),
+                    _subsMatrix.getScore(base, reads[readId][col + 2]),
+                    _subsMatrix.getScore(base, reads[readId][col + 1]),
+                    _subsMatrix.getScore(base, reads[readId][col])
+            );
+
+            __m256i forwardScoreCurrent = _mm256_set_epi64x(
+                    forwardScore.at(frontRow, col + 3),
+                    forwardScore.at(frontRow, col + 2),
+                    forwardScore.at(frontRow, col + 1),
+                    forwardScore.at(frontRow, col));
+
+            __m256i forwardScoreNext = _mm256_set_epi64x(
+                    forwardScore.at(frontRow, col + 4),
+                    forwardScore.at(frontRow, col + 3),
+                    forwardScore.at(frontRow, col + 2),
+                    forwardScore.at(frontRow, col + 1));
+
+            __m256i reverseScoreNext = _mm256_set_epi64x(
+                    reverseScore.at(revRow, cols - col - 4),
+                    reverseScore.at(revRow, cols - col - 3),
+                    reverseScore.at(revRow, cols - col - 2),
+                    reverseScore.at(revRow, cols - col - 1));
+
+            // Compute match scores
+            __m256i matchScores = _mm256_add_epi64(forwardScoreCurrent, scores);
+
+            // Compute insertion scores
+            __m256i insertScores = _mm256_add_epi64(forwardScoreNext, baseScores);
+
+            // Compute max scores
+            __m256i maxScores = mm256_max_epi64(matchScores, insertScores);
+
+            // Compute sum
+            __m256i sum = _mm256_add_epi64(reverseScoreNext, maxScores);
+
+            // Update max values
+            maxValues = mm256_max_epi64(maxValues, sum);
+        }
+
+        alignas(32) AlnScoreType maxValuesArray[batchSize];
+        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
+        for (size_t i = 0; i < batchSize; ++i)
+            maxVal = std::max(maxVal, maxValuesArray[i]);
+
+        // Process remaining elements without vectorization
+        for (size_t col = alignedReadsN; col < cols; ++col) {
+            char readBase = reads[readId][col];
+            AlnScoreType match = forwardScore.at(frontRow, col) + _subsMatrix.getScore(base, readBase);
+            AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
+            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
+        }
+
+        finalScore += maxVal;
+    }
+
+    return finalScore;
+}
 
 
 //AlnScoreType Alignment::addInsertion(unsigned int pos, char base,
@@ -335,114 +335,114 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 //}
 
 
-AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vector<std::string>& reads) const
-{
-    AlnScoreType finalScore = 0;
-    size_t frontRow = pos - 1;
-    AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
-
-    for (size_t readId = 0; readId < reads.size(); ++readId)
-    {
-        const ScoreMatrix& forwardScore = _forwardScores[readId];
-        const ScoreMatrix& reverseScore = _reverseScores[readId];
-
-        size_t revRow = reverseScore.nrows() - pos;
-
-        size_t cols = reads[readId].size();
-        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
-
-        for (size_t col = 0; col < cols; ++col)
-        {
-            char readBase = reads[readId][col];
-            AlnScoreType match = forwardScore.at(frontRow, col) + _subsMatrix.getScore(base, readBase);
-            AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
-            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
-        }
-
-		finalScore += maxVal;
-    }
-    return finalScore;
-}
-
-
-//AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vector<std::string>& reads) const {
+//AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vector<std::string>& reads) const
+//{
 //    AlnScoreType finalScore = 0;
 //    size_t frontRow = pos - 1;
-//    constexpr size_t batchSize = 4; // Use constexpr for batch size
 //    AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
-//    __m256i baseScores = _mm256_set1_epi64x(baseScoreWithGap);
 //
-//    for (size_t readId = 0; readId < reads.size(); ++readId) {
+//    for (size_t readId = 0; readId < reads.size(); ++readId)
+//    {
 //        const ScoreMatrix& forwardScore = _forwardScores[readId];
 //        const ScoreMatrix& reverseScore = _reverseScores[readId];
+//
 //        size_t revRow = reverseScore.nrows() - pos;
 //
 //        size_t cols = reads[readId].size();
-//        const size_t alignedReadsN = cols - cols % batchSize;
 //        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
-//        __m256i maxValues = _mm256_set1_epi64x(maxVal);
-//        for (size_t col = 0; col < alignedReadsN; col += batchSize)
+//
+//        for (size_t col = 0; col < cols; ++col)
 //        {
-//            // Load base scores
-//            __m256i scores = _mm256_set_epi64x(
-//                    _subsMatrix.getScore(base, reads[readId][col + 3]),
-//                    _subsMatrix.getScore(base, reads[readId][col + 2]),
-//                    _subsMatrix.getScore(base, reads[readId][col + 1]),
-//                    _subsMatrix.getScore(base, reads[readId][col])
-//            );
-//
-//            __m256i forwardScoreCurrent = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1),
-//                    forwardScore.at(frontRow, col));
-//
-//            __m256i forwardScoreNext = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 4),
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1));
-//
-//            __m256i reverseScoreNext = _mm256_set_epi64x(
-//                    reverseScore.at(revRow, cols - col - 4),
-//                    reverseScore.at(revRow, cols - col - 3),
-//                    reverseScore.at(revRow, cols - col - 2),
-//                    reverseScore.at(revRow, cols - col - 1));
-//
-//            // Compute match scores
-//            __m256i matchScores = _mm256_add_epi64(forwardScoreCurrent, scores);
-//
-//            // Compute insertion scores
-//            __m256i insertScores = _mm256_add_epi64(forwardScoreNext, baseScores);
-//
-//            // Compute max scores
-//            __m256i maxScores = mm256_max_epi64(matchScores, insertScores);
-//
-//            // Compute sum
-//            __m256i sum = _mm256_add_epi64(reverseScoreNext, maxScores);
-//
-//            // Update max values
-//            maxValues = mm256_max_epi64(maxValues, sum);
-//        }
-//
-//        alignas(32) AlnScoreType maxValuesArray[batchSize];
-//        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
-//        for (size_t i = 0; i < batchSize; ++i)
-//            maxVal = std::max(maxVal, maxValuesArray[i]);
-//
-//        // Process remaining elements without vectorization
-//        for (size_t col = alignedReadsN; col < cols; ++col) {
 //            char readBase = reads[readId][col];
 //            AlnScoreType match = forwardScore.at(frontRow, col) + _subsMatrix.getScore(base, readBase);
 //            AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
 //            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
 //        }
 //
-//        finalScore += maxVal;
+//		finalScore += maxVal;
 //    }
-//
 //    return finalScore;
 //}
+
+
+AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vector<std::string>& reads) const {
+    AlnScoreType finalScore = 0;
+    size_t frontRow = pos - 1;
+    constexpr size_t batchSize = 4; // Use constexpr for batch size
+    AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
+    __m256i baseScores = _mm256_set1_epi64x(baseScoreWithGap);
+
+    for (size_t readId = 0; readId < reads.size(); ++readId) {
+        const ScoreMatrix& forwardScore = _forwardScores[readId];
+        const ScoreMatrix& reverseScore = _reverseScores[readId];
+        size_t revRow = reverseScore.nrows() - pos;
+
+        size_t cols = reads[readId].size();
+        const size_t alignedReadsN = cols - cols % batchSize;
+        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
+        __m256i maxValues = _mm256_set1_epi64x(maxVal);
+        for (size_t col = 0; col < alignedReadsN; col += batchSize)
+        {
+            // Load base scores
+            __m256i scores = _mm256_set_epi64x(
+                    _subsMatrix.getScore(base, reads[readId][col + 3]),
+                    _subsMatrix.getScore(base, reads[readId][col + 2]),
+                    _subsMatrix.getScore(base, reads[readId][col + 1]),
+                    _subsMatrix.getScore(base, reads[readId][col])
+            );
+
+            __m256i forwardScoreCurrent = _mm256_set_epi64x(
+                    forwardScore.at(frontRow, col + 3),
+                    forwardScore.at(frontRow, col + 2),
+                    forwardScore.at(frontRow, col + 1),
+                    forwardScore.at(frontRow, col));
+
+            __m256i forwardScoreNext = _mm256_set_epi64x(
+                    forwardScore.at(frontRow, col + 4),
+                    forwardScore.at(frontRow, col + 3),
+                    forwardScore.at(frontRow, col + 2),
+                    forwardScore.at(frontRow, col + 1));
+
+            __m256i reverseScoreNext = _mm256_set_epi64x(
+                    reverseScore.at(revRow, cols - col - 4),
+                    reverseScore.at(revRow, cols - col - 3),
+                    reverseScore.at(revRow, cols - col - 2),
+                    reverseScore.at(revRow, cols - col - 1));
+
+            // Compute match scores
+            __m256i matchScores = _mm256_add_epi64(forwardScoreCurrent, scores);
+
+            // Compute insertion scores
+            __m256i insertScores = _mm256_add_epi64(forwardScoreNext, baseScores);
+
+            // Compute max scores
+            __m256i maxScores = mm256_max_epi64(matchScores, insertScores);
+
+            // Compute sum
+            __m256i sum = _mm256_add_epi64(reverseScoreNext, maxScores);
+
+            // Update max values
+            maxValues = mm256_max_epi64(maxValues, sum);
+        }
+
+        alignas(32) AlnScoreType maxValuesArray[batchSize];
+        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
+        for (size_t i = 0; i < batchSize; ++i)
+            maxVal = std::max(maxVal, maxValuesArray[i]);
+
+        // Process remaining elements without vectorization
+        for (size_t col = alignedReadsN; col < cols; ++col) {
+            char readBase = reads[readId][col];
+            AlnScoreType match = forwardScore.at(frontRow, col) + _subsMatrix.getScore(base, readBase);
+            AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
+            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
+        }
+
+        finalScore += maxVal;
+    }
+
+    return finalScore;
+}
 
 
 AlnScoreType Alignment::getScoringMatrix(const std::string& v,
