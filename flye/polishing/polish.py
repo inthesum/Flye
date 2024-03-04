@@ -153,11 +153,11 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
             filename = f"{base}_{j}.{ext}"
             os.remove(filename)
 
-        for j in range(num_threads):
-            filename = consensus_out
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_{j}.{ext}"
-            os.remove(filename)
+        # for j in range(num_threads):
+        #     filename = consensus_out
+        #     base, ext = filename.rsplit('.', 1)
+        #     filename = f"{base}_{j}.{ext}"
+        #     os.remove(filename)
 
         if not bam_input:
             os.remove(alignment_file)

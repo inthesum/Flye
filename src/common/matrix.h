@@ -60,14 +60,13 @@ public:
 	size_t nrows() const {return _rows;}
 	size_t ncols() const {return _cols;}
 
-//    const T* data() const { return _data; }
-//    const T* data(size_t row, size_t col) const
-//    {
-//        if (row >= _rows || col >= _cols) {
-//            throw std::out_of_range("Row or column index out of range");
-//        }
-//        return &_data[row * _cols + col];
-//    }
+    T* data() { return _data; }
+    const T* data() const { return _data; }
+    void reverseRows() {
+        for (size_t i = 0; i < _rows; ++i) {
+            std::reverse(_data + i * _cols, _data + (i + 1) * _cols);
+        }
+    }
 
 private:
 	size_t _rows;
