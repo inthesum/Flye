@@ -104,6 +104,11 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     std::chrono::duration<double> waitReadDuration(0);
     std::chrono::duration<double> writeBubblesDuration(0);
 
+    int64_t alignmentNum = 0;
+    int64_t deletionNum = 0;
+    int64_t insertionNum = 0;
+    int64_t substitutionNum = 0;
+
     std::chrono::duration<double> optimizeDuration(0);
     std::chrono::duration<double> makeStepDuration(0);
     std::chrono::duration<double> alignmentDuration(0);
@@ -156,6 +161,10 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
                 std::cout << "_dinucFixer: " << std::fixed << std::setprecision(2) << fixerDuration.count() << " seconds" << std::endl;
 
+                std::cout << "alignmentNum: " << alignmentNum << std::endl;
+                std::cout << "deletionNum: " << deletionNum << std::endl;
+                std::cout << "insertionNum: " << insertionNum << std::endl;
+                std::cout << "substitutionNum: " << substitutionNum << std::endl;
                 std::cout << "optimize: " << std::fixed << std::setprecision(2) << optimizeDuration.count() << " seconds" << std::endl;
                 std::cout << "makeStep: " << std::fixed << std::setprecision(2) << makeStepDuration.count() << " seconds" << std::endl;
                 std::cout << "alignment: " << std::fixed << std::setprecision(2) << alignmentDuration.count() << " seconds" << std::endl;
@@ -190,7 +199,12 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
 
                 auto generalPolisherStart = std::chrono::high_resolution_clock::now();
 //                _generalPolisher.polishBubble(bubble);
+
                 _generalPolisher.polishBubble(bubble,
+                                              alignmentNum,
+                                              deletionNum,
+                                              insertionNum,
+                                              substitutionNum,
                                               optimizeDuration,
                                               makeStepDuration,
                                               alignmentDuration,

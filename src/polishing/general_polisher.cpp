@@ -53,6 +53,10 @@
 //}
 
 void GeneralPolisher::polishBubble(Bubble& bubble,
+                                   int64_t& alignmentNum,
+                                   int64_t& deletionNum,
+                                   int64_t& insertionNum,
+                                   int64_t& substitutionNum,
                                    std::chrono::duration<double>& optimizeDuration,
                                    std::chrono::duration<double>& makeStepDuration,
                                    std::chrono::duration<double>& alignmentDuration,
@@ -63,6 +67,10 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 	auto optimize = [this] (const std::string& candidate,
 							const std::vector<std::string>& branches,
 							std::vector<StepInfo>& polishSteps,
+                            int64_t& alignmentNum,
+                            int64_t& deletionNum,
+                            int64_t& insertionNum,
+                            int64_t& substitutionNum,
                             std::chrono::duration<double>& makeStepDuration,
                             std::chrono::duration<double>& alignmentDuration,
                             std::chrono::duration<double>& deletionDuration,
@@ -79,6 +87,10 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
             StepInfo rec = this->makeStep(prevCandidate,
                                           branches,
                                           align,
+                                          alignmentNum,
+                                          deletionNum,
+                                          insertionNum,
+                                          substitutionNum,
                                           alignmentDuration,
                                           deletionDuration,
                                           insertionDuration,
@@ -86,6 +98,8 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 
             auto makeStepEnd = std::chrono::high_resolution_clock::now();
             makeStepDuration += makeStepEnd - makeStepStart;
+
+//            iterations++;
 
 			polishSteps.push_back(rec);
 			if (prevCandidate == rec.sequence) break;
@@ -122,6 +136,10 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
         prePolished = optimize(prePolished,
                                reducedSet,
                                bubble.polishSteps,
+                               alignmentNum,
+                               deletionNum,
+                               insertionNum,
+                               substitutionNum,
                                makeStepDuration,
                                alignmentDuration,
                                deletionDuration,
@@ -138,6 +156,10 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
     bubble.candidate = optimize(prePolished,
                                 bubble.branches,
 								bubble.polishSteps,
+                                alignmentNum,
+                                deletionNum,
+                                insertionNum,
+                                substitutionNum,
                                 makeStepDuration,
                                 alignmentDuration,
                                 deletionDuration,
@@ -151,6 +173,10 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 StepInfo GeneralPolisher::makeStep(const std::string& candidate,
                                    const std::vector<std::string>& branches,
                                    Alignment& align,
+                                   int64_t& alignmentNum,
+                                   int64_t& deletionNum,
+                                   int64_t& insertionNum,
+                                   int64_t& substitutionNum,
                                    std::chrono::duration<double>& alignmentDuration,
                                    std::chrono::duration<double>& deletionDuration,
                                    std::chrono::duration<double>& insertionDuration,
@@ -165,6 +191,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     AlnScoreType score = align.globalAlignment(candidate, branches);
     stepResult.score = score;
     stepResult.sequence = candidate;
+    alignmentNum++;
 
     auto alignmentEnd = std::chrono::high_resolution_clock::now();
     alignmentDuration += alignmentEnd - alignmentStart;
@@ -185,6 +212,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
             improvement = true;
         }
     }
+    deletionNum++;
 
     auto deletionEnd = std::chrono::high_resolution_clock::now();
     deletionDuration += deletionEnd - deletionStart;
@@ -208,6 +236,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
             }
         }
     }
+    insertionNum++;
 
     auto insertionEnd = std::chrono::high_resolution_clock::now();
     insertionDuration += insertionEnd - insertionStart;
@@ -233,6 +262,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
             }
         }
     }
+    substitutionNum++;
 
     auto substitutionEnd = std::chrono::high_resolution_clock::now();
     substitutionDuration += substitutionEnd - substitutionStart;
