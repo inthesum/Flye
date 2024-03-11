@@ -39,4 +39,6 @@ private:
 
     AlnScoreType getScoringMatrix(const std::string &v, const std::string &w,
                                   ScoreMatrix &scoreMat);
+    AlnScoreType getRevScoringMatrix(const std::string &v, const std::string &w,
+                                  ScoreMatrix &scoreMat);
 };

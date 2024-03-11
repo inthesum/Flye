@@ -58,7 +58,7 @@ namespace
 }
 
 SubstitutionMatrix::SubstitutionMatrix(const std::string& path)
-{	
+{
 	_matrix.assign(MAX_CHAR * MAX_CHAR, AlnScoreType(0));
 	this->loadMatrix(path);
 }
