@@ -52,7 +52,7 @@ __m256i mm256_max_epi64(__m256i a, __m256i b) {
     return result;
 }
 
-constexpr size_t PREFETCH_DISTANCE = 128;
+//constexpr size_t PREFETCH_DISTANCE = 128;
 
 //AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 //{
@@ -101,8 +101,8 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
         for (size_t col = 0; col < alignedReadsN; col += batchSize)
         {
              // Load elements into SIMD vectors
-            _mm_prefetch((const char*)(forwardScore.data() + frontRow * cols + col + PREFETCH_DISTANCE), _MM_HINT_T0);
-            _mm_prefetch((const char*)(reverseScore.data() + revRow * cols + cols - col - 4 + PREFETCH_DISTANCE), _MM_HINT_T0);
+//            _mm_prefetch((const char*)(forwardScore.data() + frontRow * cols + col + PREFETCH_DISTANCE), _MM_HINT_T0);
+//            _mm_prefetch((const char*)(reverseScore.data() + revRow * cols + cols - col - 4 + PREFETCH_DISTANCE), _MM_HINT_T0);
 
 //            __m256i forwardVals = _mm256_set_epi64x(
 //                    forwardScore.at(frontRow, col + 3),
@@ -234,8 +234,8 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
         __m256i maxValues = _mm256_set1_epi64x(maxVal);
         for (size_t col = 0; col < alignedReadsN; col += batchSize)
         {
-            _mm_prefetch((const char*)(forwardScore.data() + frontRow * cols + col + PREFETCH_DISTANCE), _MM_HINT_T0);
-            _mm_prefetch((const char*)(reverseScore.data() + revRow * cols + cols - col - 4 + PREFETCH_DISTANCE), _MM_HINT_T0);
+//            _mm_prefetch((const char*)(forwardScore.data() + frontRow * cols + col + PREFETCH_DISTANCE), _MM_HINT_T0);
+//            _mm_prefetch((const char*)(reverseScore.data() + revRow * cols + cols - col - 4 + PREFETCH_DISTANCE), _MM_HINT_T0);
 
             // Load base scores
             __m256i scores = _mm256_set_epi64x(
@@ -392,8 +392,8 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vec
 
         for (size_t col = 0; col < alignedReadsN; col += batchSize)
         {
-            _mm_prefetch((const char*)(forwardScore.data() + frontRow * cols + col + PREFETCH_DISTANCE), _MM_HINT_T0);
-            _mm_prefetch((const char*)(reverseScore.data() + revRow * cols + cols - col - 4 + PREFETCH_DISTANCE), _MM_HINT_T0);
+//            _mm_prefetch((const char*)(forwardScore.data() + frontRow * cols + col + PREFETCH_DISTANCE), _MM_HINT_T0);
+//            _mm_prefetch((const char*)(reverseScore.data() + revRow * cols + cols - col - 4 + PREFETCH_DISTANCE), _MM_HINT_T0);
 
             // Load base scores
             __m256i scores = _mm256_set_epi64x(
