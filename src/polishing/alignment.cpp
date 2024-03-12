@@ -43,52 +43,52 @@ Alignment::Alignment(size_t size, const SubstitutionMatrix& sm):
 //	return finalScore;
 //}
 
-AlnScoreType Alignment::globalAlignment(const std::string& consensus,
-							 			const std::vector<std::string>& reads)
-{
-	AlnScoreType finalScore = 0;
-	for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
-	{
-		unsigned int x = consensus.size() + 1;
-		unsigned int y = reads[readId].size() + 1;
-
-		ScoreMatrix scoreMat(x, y, 0);
-		AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
-		_forwardScores[readId] = std::move(scoreMat);
-
-		std::string revConsensus(consensus.rbegin(), consensus.rend());
-		ScoreMatrix scoreMatRev(x, y, 0);
-		this->getRevScoringMatrix(revConsensus, reads[readId], scoreMatRev);
-		_reverseScores[readId] = std::move(scoreMatRev);
-
-		finalScore += score;
-	}
-
-	return finalScore;
-}
-
 //AlnScoreType Alignment::globalAlignment(const std::string& consensus,
-//                                        const std::vector<std::string>& reads)
+//							 			const std::vector<std::string>& reads)
 //{
-//    AlnScoreType finalScore = 0;
-//    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
-//    {
-//        unsigned int x = consensus.size() + 1;
-//        unsigned int y = reads[readId].size() + 1;
+//	AlnScoreType finalScore = 0;
+//	for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
+//	{
+//		unsigned int x = consensus.size() + 1;
+//		unsigned int y = reads[readId].size() + 1;
 //
-//        ScoreMatrix scoreMat(x, y, 0);
-//        AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
-//        _forwardScores[readId] = std::move(scoreMat);
+//		ScoreMatrix scoreMat(x, y, 0);
+//		AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
+//		_forwardScores[readId] = std::move(scoreMat);
 //
-//        ScoreMatrix scoreMatRev(x, y, 0);
-//        this->getRevScoringMatrix(consensus, reads[readId], scoreMatRev);
-//        _reverseScores[readId] = std::move(scoreMatRev);
+//		std::string revConsensus(consensus.rbegin(), consensus.rend());
+//		ScoreMatrix scoreMatRev(x, y, 0);
+//		this->getRevScoringMatrix(revConsensus, reads[readId], scoreMatRev);
+//		_reverseScores[readId] = std::move(scoreMatRev);
 //
-//        finalScore += score;
-//    }
+//		finalScore += score;
+//	}
 //
-//    return finalScore;
+//	return finalScore;
 //}
+
+AlnScoreType Alignment::globalAlignment(const std::string& consensus,
+                                        const std::vector<std::string>& reads)
+{
+    AlnScoreType finalScore = 0;
+    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
+    {
+        unsigned int x = consensus.size() + 1;
+        unsigned int y = reads[readId].size() + 1;
+
+        ScoreMatrix scoreMat(x, y, 0);
+        AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
+        _forwardScores[readId] = std::move(scoreMat);
+
+        ScoreMatrix scoreMatRev(x, y, 0);
+        this->getRevScoringMatrix(consensus, reads[readId], scoreMatRev);
+        _reverseScores[readId] = std::move(scoreMatRev);
+
+        finalScore += score;
+    }
+
+    return finalScore;
+}
 
 
 __m256i mm256_max_epi64(__m256i a, __m256i b) {
@@ -98,6 +98,8 @@ __m256i mm256_max_epi64(__m256i a, __m256i b) {
     __m256i result = _mm256_blendv_epi8(b, a, cmp_mask);
     return result;
 }
+
+constexpr size_t batchSize = 4; // Use constexpr for batch size
 
 
 //AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
@@ -129,14 +131,14 @@ __m256i mm256_max_epi64(__m256i a, __m256i b) {
 AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 {
     AlnScoreType finalScore = 0;
-    constexpr size_t batchSize = 4; // Use constexpr for batch size
     size_t frontRow = letterIndex - 1;
 
     for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
     {
         const ScoreMatrix& forwardScore = _forwardScores[readId];
         const ScoreMatrix& reverseScore = _reverseScores[readId];
-        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+//        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+        size_t revRow = letterIndex;
 
         AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
         __m256i maxValues = _mm256_set1_epi64x(maxVal);
@@ -146,22 +148,9 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
         for (size_t col = 0; col < alignedReadsN; col += batchSize)
         {
              // Load elements into SIMD vectors
-//            __m256i forwardVals = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1),
-//                    forwardScore.at(frontRow, col)
-//            );
             __m256i forwardVals = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * cols + col));
 
-//            __m256i reverseVals = _mm256_set_epi64x(
-//                    reverseScore.at(revRow, cols - col - 4),
-//                    reverseScore.at(revRow, cols - col - 3),
-//                    reverseScore.at(revRow, cols - col - 2),
-//                    reverseScore.at(revRow, cols - col - 1)
-//            );
             __m256i reverseVals = _mm256_loadu_si256((__m256i*)(reverseScore.data() + revRow * cols + col));
-//            __m256i reverseVals = _mm256_loadu_si256((__m256i*)(reverseScore.data() + frontRow * cols + col));
 
             // Perform element-wise addition
             __m256i sum = _mm256_add_epi64(forwardVals, reverseVals);
@@ -183,7 +172,6 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
         for (size_t col = alignedReadsN; col < cols; ++col) {
 //			AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(revRow, cols - col - 1);
 			AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(revRow, col);
-//            AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(frontRow, col);
             maxVal = std::max(maxVal, sum);
         }
 
@@ -262,20 +250,19 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 {
     AlnScoreType finalScore = 0;
     size_t frontRow = letterIndex - 1;
-    constexpr size_t batchSize = 4; // Use constexpr for batch size
     AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
     __m256i baseScores = _mm256_set1_epi64x(baseScoreWithGap);
 
     for (size_t readId = 0; readId < reads.size(); ++readId) {
         const ScoreMatrix& forwardScore = _forwardScores[readId];
         const ScoreMatrix& reverseScore = _reverseScores[readId];
-        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+//        size_t revRow = reverseScore.nrows() - 1 - letterIndex;
+        size_t revRow = letterIndex;
 
         size_t cols = reads[readId].size();
         const size_t alignedReadsN = cols - cols % batchSize;
 //        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
         AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, 0) + baseScoreWithGap;
-//        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(frontRow, 0) + baseScoreWithGap;
         __m256i maxValues = _mm256_set1_epi64x(maxVal);
         for (size_t col = 0; col < alignedReadsN; col += batchSize)
         {
@@ -287,27 +274,11 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
                     _subsMatrix.getScore(base, reads[readId][col])
             );
 
-//            __m256i forwardScoreCurrent = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1),
-//                    forwardScore.at(frontRow, col));
             __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * (cols + 1) + col));
-//
-//            __m256i forwardScoreNext = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 4),
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1));
+
             __m256i forwardScoreNext = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * (cols + 1) + col + 1));
 
-//            __m256i reverseScoreNext = _mm256_set_epi64x(
-//                    reverseScore.at(revRow, cols - col - 4),
-//                    reverseScore.at(revRow, cols - col - 3),
-//                    reverseScore.at(revRow, cols - col - 2),
-//                    reverseScore.at(revRow, cols - col - 1));
             __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reverseScore.data() + revRow * (cols + 1) + col + 1));
-//            __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reverseScore.data() + frontRow * (cols + 1) + col + 1));
 
             // Compute match scores
             __m256i matchScores = _mm256_add_epi64(forwardScoreCurrent, scores);
@@ -337,7 +308,6 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
             AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
 //            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
             maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, col+1));
-//            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(frontRow, col+1));
         }
 
         finalScore += maxVal;
@@ -414,20 +384,19 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vector<std::string>& reads) const {
     AlnScoreType finalScore = 0;
     size_t frontRow = pos - 1;
-    constexpr size_t batchSize = 4; // Use constexpr for batch size
     AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
     __m256i baseScores = _mm256_set1_epi64x(baseScoreWithGap);
 
     for (size_t readId = 0; readId < reads.size(); ++readId) {
         const ScoreMatrix& forwardScore = _forwardScores[readId];
         const ScoreMatrix& reverseScore = _reverseScores[readId];
-        size_t revRow = reverseScore.nrows() - pos;
+//        size_t revRow = reverseScore.nrows() - pos;
+        size_t revRow = pos - 1;
 
         size_t cols = reads[readId].size();
         const size_t alignedReadsN = cols - cols % batchSize;
 //        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, cols) + baseScoreWithGap;
         AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(revRow, 0) + baseScoreWithGap;
-//        AlnScoreType maxVal = forwardScore.at(frontRow, 0) + reverseScore.at(frontRow, 0) + baseScoreWithGap;
         __m256i maxValues = _mm256_set1_epi64x(maxVal);
 
 //        AlnScoreType arr[cols];
@@ -446,27 +415,11 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vec
             );
 //             __m256i scores = _mm256_loadu_si256((__m256i*)(arr + col));
 
-//            __m256i forwardScoreCurrent = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1),
-//                    forwardScore.at(frontRow, col));
             __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * (cols + 1) + col));
 
-//            __m256i forwardScoreNext = _mm256_set_epi64x(
-//                    forwardScore.at(frontRow, col + 4),
-//                    forwardScore.at(frontRow, col + 3),
-//                    forwardScore.at(frontRow, col + 2),
-//                    forwardScore.at(frontRow, col + 1));
             __m256i forwardScoreNext = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * (cols + 1) + col + 1));
 
-//            __m256i reverseScoreNext = _mm256_set_epi64x(
-//                    reverseScore.at(revRow, cols - col - 4),
-//                    reverseScore.at(revRow, cols - col - 3),
-//                    reverseScore.at(revRow, cols - col - 2),
-//                    reverseScore.at(revRow, cols - col - 1));
             __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reverseScore.data() + revRow * (cols + 1) + col + 1));
-//            __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reverseScore.data() + frontRow * (cols + 1) + col + 1));
 
             // Compute match scores
             __m256i matchScores = _mm256_add_epi64(forwardScoreCurrent, scores);
@@ -497,7 +450,6 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vec
             AlnScoreType ins = forwardScore.at(frontRow, col+1) + baseScoreWithGap;
 //            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, cols - col - 1));
             maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(revRow, col+1));
-//            maxVal = std::max(maxVal, std::max(match, ins) + reverseScore.at(frontRow, col+1));
         }
 
         finalScore += maxVal;
@@ -546,77 +498,76 @@ AlnScoreType Alignment::getScoringMatrix(const std::string& v,
 	return score;
 }
 
-
-AlnScoreType Alignment::getRevScoringMatrix(const std::string& v,
-                                         const std::string& w,
-                                         ScoreMatrix& scoreMat)
-{
-    AlnScoreType score = 0;
-
-    for (size_t i = 0; i < v.size(); i++)
-    {
-        AlnScoreType score = _subsMatrix.getScore(v[i], '-');
-        scoreMat.at(i + 1, w.size()) = scoreMat.at(i, w.size()) + score;
-    }
-
-    for (int i = w.size() - 1; i >= 0 ; i--) {
-        AlnScoreType score = _subsMatrix.getScore('-', w[i]);
-        scoreMat.at(0, i) = scoreMat.at(0, i + 1) + score;
-    }
-
-    for (size_t i = 1; i < v.size() + 1; i++)
-    {
-        char key1 = v[i - 1];
-        for (size_t j = w.size(); j >= 1; j--)
-        {
-            char key2 = w[j - 1];
-
-            AlnScoreType left = scoreMat.at(i, j) + _subsMatrix.getScore('-', key2);
-            AlnScoreType up = scoreMat.at(i - 1, j - 1) + _subsMatrix.getScore(key1, '-');
-            score = std::max(left, up);
-
-            AlnScoreType cross = scoreMat.at(i - 1, j) + _subsMatrix.getScore(key1, key2);
-            score = std::max(score, cross);
-            scoreMat.at(i, j - 1) = score;
-        }
-    }
-
-    return score;
-}
-
 //AlnScoreType Alignment::getRevScoringMatrix(const std::string& v,
-//                                            const std::string& w,
-//                                            ScoreMatrix& scoreMat)
+//                                         const std::string& w,
+//                                         ScoreMatrix& scoreMat)
 //{
 //    AlnScoreType score = 0;
 //
-//    for (int i = v.size() - 1; i >= 0; i--)
+//    for (size_t i = 0; i < v.size(); i++)
 //    {
 //        AlnScoreType score = _subsMatrix.getScore(v[i], '-');
-//        scoreMat.at(i, w.size()) = scoreMat.at(i + 1, w.size()) + score;
+//        scoreMat.at(i + 1, w.size()) = scoreMat.at(i, w.size()) + score;
 //    }
 //
 //    for (int i = w.size() - 1; i >= 0 ; i--) {
 //        AlnScoreType score = _subsMatrix.getScore('-', w[i]);
-//        scoreMat.at(v.size(), i) = scoreMat.at(v.size(), i + 1) + score;
+//        scoreMat.at(0, i) = scoreMat.at(0, i + 1) + score;
 //    }
 //
-//    for (size_t i = v.size(); i >= 1; i--)
+//    for (size_t i = 1; i < v.size() + 1; i++)
 //    {
 //        char key1 = v[i - 1];
 //        for (size_t j = w.size(); j >= 1; j--)
 //        {
 //            char key2 = w[j - 1];
 //
-//            AlnScoreType right = scoreMat.at(i - 1, j) + _subsMatrix.getScore('-', key2);
-//            AlnScoreType down = scoreMat.at(i, j - 1) + _subsMatrix.getScore(key1, '-');
-//            score = std::max(right, down);
+//            AlnScoreType right = scoreMat.at(i, j) + _subsMatrix.getScore('-', key2);
+//            AlnScoreType up = scoreMat.at(i - 1, j - 1) + _subsMatrix.getScore(key1, '-');
+//            score = std::max(right, up);
 //
-//            AlnScoreType cross = scoreMat.at(i, j) + _subsMatrix.getScore(key1, key2);
+//            AlnScoreType cross = scoreMat.at(i - 1, j) + _subsMatrix.getScore(key1, key2);
 //            score = std::max(score, cross);
-//            scoreMat.at(i - 1, j - 1) = score;
+//            scoreMat.at(i, j - 1) = score;
 //        }
 //    }
 //
 //    return score;
 //}
+
+AlnScoreType Alignment::getRevScoringMatrix(const std::string& v,
+                                            const std::string& w,
+                                            ScoreMatrix& scoreMat)
+{
+    AlnScoreType score = 0;
+
+    for (int i = v.size() - 1; i >= 0; i--)
+    {
+        AlnScoreType score = _subsMatrix.getScore(v[i], '-');
+        scoreMat.at(i, w.size()) = scoreMat.at(i + 1, w.size()) + score;
+    }
+
+    for (int i = w.size() - 1; i >= 0 ; i--) {
+        AlnScoreType score = _subsMatrix.getScore('-', w[i]);
+        scoreMat.at(v.size(), i) = scoreMat.at(v.size(), i + 1) + score;
+    }
+
+    for (size_t i = v.size(); i >= 1; i--)
+    {
+        char key1 = v[i - 1];
+        for (size_t j = w.size(); j >= 1; j--)
+        {
+            char key2 = w[j - 1];
+
+            AlnScoreType right = scoreMat.at(i - 1, j) + _subsMatrix.getScore('-', key2);
+            AlnScoreType down = scoreMat.at(i, j - 1) + _subsMatrix.getScore(key1, '-');
+            score = std::max(right, down);
+
+            AlnScoreType cross = scoreMat.at(i, j) + _subsMatrix.getScore(key1, key2);
+            score = std::max(score, cross);
+            scoreMat.at(i - 1, j - 1) = score;
+        }
+    }
+
+    return score;
+}
