@@ -452,226 +452,43 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base, const std::vec
 }
 
 
-//AlnScoreType Alignment::getScoringMatrix(const std::string& v,
-//										 const std::string& w,
-//								  		 ScoreMatrix& scoreMat)
-//{
-//	AlnScoreType score = 0;
-//
-//	for (size_t i = 0; i < v.size(); i++)
-//	{
-//		AlnScoreType score = _subsMatrix.getScore(v[i], '-');
-//		scoreMat.at(i + 1, 0) = scoreMat.at(i, 0) + score;
-//	}
-//
-//
-//	for (size_t i = 0; i < w.size(); i++) {
-//		AlnScoreType score = _subsMatrix.getScore('-', w[i]);
-//		scoreMat.at(0, i + 1) = scoreMat.at(0, i) + score;
-//	}
-//
-//
-//	for (size_t i = 1; i < v.size() + 1; i++)
-//	{
-//		char key1 = v[i - 1];
-//		for (size_t j = 1; j < w.size() + 1; j++)
-//		{
-//			char key2 = w[j - 1];
-//
-//			AlnScoreType left = scoreMat.at(i, j - 1) + _subsMatrix.getScore('-', key2);
-//			AlnScoreType up = scoreMat.at(i - 1, j) + _subsMatrix.getScore(key1, '-');
-//			score = std::max(left, up);
-//
-//			AlnScoreType cross = scoreMat.at(i - 1, j - 1) + _subsMatrix.getScore(key1, key2);
-//			score = std::max(score, cross);
-//			scoreMat.at(i, j) = score;
-//		}
-//	}
-//
-//	return score;
-//}
-
 AlnScoreType Alignment::getScoringMatrix(const std::string& v,
-                                         const std::string& w,
-                                         ScoreMatrix& scoreMat)
+										 const std::string& w,
+								  		 ScoreMatrix& scoreMat)
 {
-    AlnScoreType score = 0;
-    size_t rows = v.size();
-    size_t cols = w.size();
+	AlnScoreType score = 0;
 
-    for (size_t i = 0; i < v.size(); i++)
-    {
-        AlnScoreType score = _subsMatrix.getScore(v[i], '-');
-        scoreMat.at(i + 1, 0) = scoreMat.at(i, 0) + score;
-    }
+	for (size_t i = 0; i < v.size(); i++)
+	{
+		AlnScoreType score = _subsMatrix.getScore(v[i], '-');
+		scoreMat.at(i + 1, 0) = scoreMat.at(i, 0) + score;
+	}
 
 
-    for (size_t i = 0; i < w.size(); i++) {
-        AlnScoreType score = _subsMatrix.getScore('-', w[i]);
-        scoreMat.at(0, i + 1) = scoreMat.at(0, i) + score;
-    }
+	for (size_t i = 0; i < w.size(); i++) {
+		AlnScoreType score = _subsMatrix.getScore('-', w[i]);
+		scoreMat.at(0, i + 1) = scoreMat.at(0, i) + score;
+	}
 
-    AlnScoreType cross, up, left;
-    const size_t alignedRows = rows - rows % batchSize;
-    for (size_t row = 1; row < alignedRows + 1; row += batchSize) {
-        // step one: preprocess
-        // (1, 1)
-        cross = scoreMat.at(row - 1, 0) + _subsMatrix.getScore(v[row - 1], w[0]);
-        up = scoreMat.at(row - 1, 1) + _subsMatrix.getScore(v[row - 1], '-');
-        left = scoreMat.at(row, 0) + _subsMatrix.getScore('-', w[0]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row, 1) = score;
 
-        // (1, 2), (2, 1)
-        cross = scoreMat.at(row - 1, 1) + _subsMatrix.getScore(v[row - 1], w[1]);
-        up = scoreMat.at(row - 1, 2) + _subsMatrix.getScore(v[row - 1], '-');
-        left = scoreMat.at(row, 1) + _subsMatrix.getScore('-', w[1]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row, 2) = score;
+	for (size_t i = 1; i < v.size() + 1; i++)
+	{
+		char key1 = v[i - 1];
+		for (size_t j = 1; j < w.size() + 1; j++)
+		{
+			char key2 = w[j - 1];
 
-        cross = scoreMat.at(row, 0) + _subsMatrix.getScore(v[row], w[0]);
-        up = scoreMat.at(row, 1) + _subsMatrix.getScore(v[row], '-');
-        left = scoreMat.at(row + 1, 0) + _subsMatrix.getScore('-', w[0]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 1, 1) = score;
+			AlnScoreType left = scoreMat.at(i, j - 1) + _subsMatrix.getScore('-', key2);
+			AlnScoreType up = scoreMat.at(i - 1, j) + _subsMatrix.getScore(key1, '-');
+			score = std::max(left, up);
 
-        // (1, 3), (2, 2), (3, 1)
-        cross = scoreMat.at(row - 1, 2) + _subsMatrix.getScore(v[row - 1], w[2]);
-        up = scoreMat.at(row - 1, 3) + _subsMatrix.getScore(v[row - 1], '-');
-        left = scoreMat.at(row, 2) + _subsMatrix.getScore('-', w[2]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row, 3) = score;
+			AlnScoreType cross = scoreMat.at(i - 1, j - 1) + _subsMatrix.getScore(key1, key2);
+			score = std::max(score, cross);
+			scoreMat.at(i, j) = score;
+		}
+	}
 
-        cross = scoreMat.at(row, 1) + _subsMatrix.getScore(v[row], w[1]);
-        up = scoreMat.at(row, 2) + _subsMatrix.getScore(v[row], '-');
-        left = scoreMat.at(row + 1, 1) + _subsMatrix.getScore('-', w[1]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 1, 2) = score;
-
-        cross = scoreMat.at(row + 1, 0) + _subsMatrix.getScore(v[row + 1], w[0]);
-        up = scoreMat.at(row + 1, 1) + _subsMatrix.getScore(v[row + 1], '-');
-        left = scoreMat.at(row + 2, 0) + _subsMatrix.getScore('-', w[0]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 2, 1) = score;
-
-        // step two: parallel process
-        // (1, 4), (2, 3), (3, 2), (4, 1)
-        AlnScoreType arr1[batchSize + 1], arr2[batchSize + 1];
-
-        arr1[0] = scoreMat.at(row - 1, 3);
-        arr1[1] = scoreMat.at(row + 0, 2);
-        arr1[2] = scoreMat.at(row + 1, 1);
-        arr1[3] = scoreMat.at(row + 2, 0);
-
-        arr2[0] = scoreMat.at(row - 1, 4);
-        arr2[1] = scoreMat.at(row + 0, 3);
-        arr2[2] = scoreMat.at(row + 1, 2);
-        arr2[3] = scoreMat.at(row + 2, 1);
-        arr2[4] = scoreMat.at(row + 3, 0);
-
-        for(int col = 4; col <= cols; col++) {
-            // preprocess: load array to avx register
-            __m256i crossSubsMat = _mm256_set_epi64x(
-                    _subsMatrix.getScore(v[row + 2], w[col - 4]),
-                    _subsMatrix.getScore(v[row + 1], w[col - 3]),
-                    _subsMatrix.getScore(v[row + 0], w[col - 2]),
-                    _subsMatrix.getScore(v[row - 1], w[col - 1])
-            );
-            __m256i crossScoreMat = _mm256_load_si256((__m256i*)(arr1));
-
-            __m256i upSubsMat = _mm256_set_epi64x(
-                    _subsMatrix.getScore(v[row + 2], '-'),
-                    _subsMatrix.getScore(v[row + 1], '-'),
-                    _subsMatrix.getScore(v[row + 0], '-'),
-                    _subsMatrix.getScore(v[row - 1], '-')
-            );
-            __m256i upScoreMat = _mm256_loadu_si256((__m256i*)(arr2));
-
-            __m256i leftSubsMat = _mm256_set_epi64x(
-                    _subsMatrix.getScore('-', w[col - 4]),
-                    _subsMatrix.getScore('-', w[col - 3]),
-                    _subsMatrix.getScore('-', w[col - 2]),
-                    _subsMatrix.getScore('-', w[col - 1])
-            );
-            __m256i leftScoreMat = _mm256_loadu_si256((__m256i*)(arr2 + 1));
-
-            // process: computer arithmetic
-            __m256i crossScore = _mm256_add_epi64(crossScoreMat,crossSubsMat);
-            __m256i upScore = _mm256_add_epi64(upScoreMat,upSubsMat);
-            __m256i leftScore = _mm256_add_epi64(leftScoreMat,leftSubsMat);
-
-            __m256i maxValues = mm256_max_epi64(crossScore, upScore);
-            maxValues = mm256_max_epi64(maxValues, leftScore);
-
-            // postprocess: load avx register to array
-            std::swap(arr1, arr2);
-
-            _mm256_storeu_si256((__m256i*)(arr2 + 1), maxValues);
-
-            scoreMat.at(row + 0, col + 0) = arr2[1];
-            scoreMat.at(row + 1, col - 1) = arr2[2];
-            scoreMat.at(row + 2, col - 2) = arr2[3];
-            scoreMat.at(row + 3, col - 3) = arr2[4];
-
-            arr2[0] = scoreMat.at(row - 1, col + 1);
-        }
-
-        // step three: postprocess
-        // (2, w.size()), (3, w.size() - 1), (4, w.size() - 2)
-        cross = scoreMat.at(row, cols - 1) + _subsMatrix.getScore(v[row], w[cols - 1]);
-        up = scoreMat.at(row, cols) + _subsMatrix.getScore(v[row], '-');
-        left = scoreMat.at(row + 1, cols - 1) + _subsMatrix.getScore('-', w[cols - 1]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 1, cols) = score;
-
-        cross = scoreMat.at(row + 1, cols - 2) + _subsMatrix.getScore(v[row + 1], w[cols - 2]);
-        up = scoreMat.at(row + 1, cols - 1) + _subsMatrix.getScore(v[row + 1], '-');
-        left = scoreMat.at(row + 2, cols - 2) + _subsMatrix.getScore('-', w[cols - 2]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 2, cols - 1) = score;
-
-        cross = scoreMat.at(row + 2, cols - 3) + _subsMatrix.getScore(v[row + 2], w[cols - 3]);
-        up = scoreMat.at(row + 2, cols - 2) + _subsMatrix.getScore(v[row + 2], '-');
-        left = scoreMat.at(row + 3, cols - 3) + _subsMatrix.getScore('-', w[cols - 3]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 3, cols - 2) = score;
-
-        // (3, w.size()), (4, w.size() - 1)
-        cross = scoreMat.at(row + 1, cols - 1) + _subsMatrix.getScore(v[row + 1], w[cols - 1]);
-        up = scoreMat.at(row + 1, cols) + _subsMatrix.getScore(v[row + 1], '-');
-        left = scoreMat.at(row + 2, cols - 1) + _subsMatrix.getScore('-', w[cols - 1]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 2, cols) = score;
-
-        cross = scoreMat.at(row + 2, cols - 2) + _subsMatrix.getScore(v[row + 2], w[cols - 2]);
-        up = scoreMat.at(row + 2, cols - 1) + _subsMatrix.getScore(v[row + 2], '-');
-        left = scoreMat.at(row + 3, cols - 2) + _subsMatrix.getScore('-', w[cols - 2]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 3, cols - 1) = score;
-
-        // (4, w.size())
-        cross = scoreMat.at(row + 2, cols - 1) + _subsMatrix.getScore(v[row + 2], w[cols - 1]);
-        up = scoreMat.at(row + 2, cols) + _subsMatrix.getScore(v[row + 2], '-');
-        left = scoreMat.at(row + 3, cols - 1) + _subsMatrix.getScore('-', w[cols - 1]);
-        score = std::max(std::max(left, up), cross);
-        scoreMat.at(row + 3, cols) = score;
-    }
-
-    for (size_t row = alignedRows + 1; row < rows + 1; ++row) {
-        char key1 = v[row - 1];
-        for (size_t j = 1; j < w.size() + 1; j++)
-        {
-            char key2 = w[j - 1];
-
-            left = scoreMat.at(row, j - 1) + _subsMatrix.getScore('-', key2);
-            up = scoreMat.at(row - 1, j) + _subsMatrix.getScore(key1, '-');
-            cross = scoreMat.at(row - 1, j - 1) + _subsMatrix.getScore(key1, key2);
-            score = std::max(std::max(left, up), cross);
-            scoreMat.at(row, j) = score;
-        }
-    }
-
-    return score;
+	return score;
 }
 
 AlnScoreType Alignment::getRevScoringMatrix(const std::string& v,
