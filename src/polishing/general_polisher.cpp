@@ -78,10 +78,12 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
                             std::chrono::duration<double>& substitutionDuration)
 	{
 		std::string prevCandidate = candidate;
-		Alignment align(branches.size(), _subsMatrix);
-		size_t iterNum = 0;
+//		Alignment align(branches.size(), _subsMatrix);
+        Alignment align(branches.size(), _subsMatrix, branches);
+        size_t iterNum = 0;
 		while(true)
 		{
+//            std::cout << "iterNum = " << iterNum << std::endl;
             auto makeStepStart = std::chrono::high_resolution_clock::now();
 
             StepInfo rec = this->makeStep(prevCandidate,
