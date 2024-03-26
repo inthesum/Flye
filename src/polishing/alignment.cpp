@@ -106,77 +106,77 @@ constexpr size_t batchSize = 4; // Use constexpr for batch size
 //	return finalScore;
 //}
 
-AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
-{
-    AlnScoreType finalScore = 0;
-    size_t frontRow = letterIndex - 1;
-    size_t revRow = letterIndex;
-
-    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
-    {
-        const ScoreMatrix& forwardScore = _forwardScores[readId];
-        const ScoreMatrix& reverseScore = _reverseScores[readId];
-
-        AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
-        for (size_t col = 0; col < forwardScore.ncols(); ++col)
-        {
-            AlnScoreType sum = forwardScore.at(frontRow, col) + reverseScore.at(revRow, col);
-            maxVal = std::max(maxVal, sum);
-        }
-        finalScore += maxVal;
-    }
-    return finalScore;
-}
-
 //AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 //{
 //    AlnScoreType finalScore = 0;
 //    size_t frontRow = letterIndex - 1;
+//    size_t revRow = letterIndex;
 //
 //    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
 //    {
 //        const ScoreMatrix& forwardScore = _forwardScores[readId];
 //        const ScoreMatrix& reverseScore = _reverseScores[readId];
-//        size_t revRow = letterIndex;
 //
 //        AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
-//        __m256i maxValues = _mm256_set1_epi64x(maxVal);
-//
-//        size_t cols = forwardScore.ncols();
-//        const size_t alignedReadsN = cols - cols % batchSize;
-//        for (size_t col = 0; col < alignedReadsN; col += batchSize)
+//        for (size_t col = 0; col < forwardScore.ncols(); ++col)
 //        {
-//             // Load elements into SIMD vectors
-//            __m256i forwardVals = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * cols + col));
-//
-//            __m256i reverseVals = _mm256_loadu_si256((__m256i*)(reverseScore.data() + revRow * cols + col));
-//
-//            // Perform element-wise addition
-//            __m256i sum = _mm256_add_epi64(forwardVals, reverseVals);
-//
-//            // Find the maximum value within the SIMD vector
-//            maxValues = mm256_max_epi64(maxValues, sum);
-//        }
-//
-//        // Store the result
-//        alignas(32) AlnScoreType maxValuesArray[batchSize];
-//        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
-//
-//        // Update maxVal
-//        for (size_t i = 0; i < batchSize; ++i)
-//        {
-//            maxVal = std::max(maxVal, maxValuesArray[i]);
-//        }
-//
-//        for (size_t col = alignedReadsN; col < cols; ++col) {
-//			AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(revRow, col);
+//            AlnScoreType sum = forwardScore.at(frontRow, col) + reverseScore.at(revRow, col);
 //            maxVal = std::max(maxVal, sum);
 //        }
-//
 //        finalScore += maxVal;
 //    }
 //    return finalScore;
 //}
+
+AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
+{
+    AlnScoreType finalScore = 0;
+    size_t frontRow = letterIndex - 1;
+
+    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
+    {
+        const ScoreMatrix& forwardScore = _forwardScores[readId];
+        const ScoreMatrix& reverseScore = _reverseScores[readId];
+        size_t revRow = letterIndex;
+
+        AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
+        __m256i maxValues = _mm256_set1_epi64x(maxVal);
+
+        size_t cols = forwardScore.ncols();
+        const size_t alignedReadsN = cols - cols % batchSize;
+        for (size_t col = 0; col < alignedReadsN; col += batchSize)
+        {
+             // Load elements into SIMD vectors
+            __m256i forwardVals = _mm256_load_si256((__m256i*)(forwardScore.data() + frontRow * cols + col));
+
+            __m256i reverseVals = _mm256_loadu_si256((__m256i*)(reverseScore.data() + revRow * cols + col));
+
+            // Perform element-wise addition
+            __m256i sum = _mm256_add_epi64(forwardVals, reverseVals);
+
+            // Find the maximum value within the SIMD vector
+            maxValues = mm256_max_epi64(maxValues, sum);
+        }
+
+        // Store the result
+        alignas(32) AlnScoreType maxValuesArray[batchSize];
+        _mm256_store_si256((__m256i*)maxValuesArray, maxValues);
+
+        // Update maxVal
+        for (size_t i = 0; i < batchSize; ++i)
+        {
+            maxVal = std::max(maxVal, maxValuesArray[i]);
+        }
+
+        for (size_t col = alignedReadsN; col < cols; ++col) {
+			AlnScoreType sum = forwardScore.at(frontRow, col) +  reverseScore.at(revRow, col);
+            maxVal = std::max(maxVal, sum);
+        }
+
+        finalScore += maxVal;
+    }
+    return finalScore;
+}
 
 
 //AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
