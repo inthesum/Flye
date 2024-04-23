@@ -44,8 +44,13 @@ private:
     AlnScoreType* _subsScoresG;
     AlnScoreType* _subsScoresT;
 
-    AlnScoreType getScoringMatrix(const std::string &v, const std::string &w,
+    AlnScoreType getScoringMatrix(const std::string &v,
+                                  const std::string &w,
                                   ScoreMatrix &scoreMat);
-    AlnScoreType getRevScoringMatrix(const std::string &v, const std::string &w,
-                                  ScoreMatrix &scoreMat);
+    AlnScoreType getRevScoringMatrix(const std::string &v,
+                                     const std::string &w,
+                                     ScoreMatrix &scoreMat);
+    AlnScoreType getScoringMatrixAVX2(const std::string& v,
+                                      const std::string& w,
+                                      ScoreMatrix &scoreMat);
 };
