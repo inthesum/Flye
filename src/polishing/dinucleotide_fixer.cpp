@@ -10,7 +10,7 @@ void DinucleotideFixer::fixBubble(Bubble& bubble) const
 	auto likelihood = [this](const std::string& candidate, 
 						     const std::vector<std::string>& branches)
 	{
-		Alignment align(branches.size(), _subsMatrix, branches);
+        Alignment align(branches.size(), _subsMatrix);
 		AlnScoreType score = align.globalAlignment(candidate, branches);
 		return score;
 	};

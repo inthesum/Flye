@@ -32,6 +32,13 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
         _showProgress(showProgress),
         _hopoEnabled(hopoEnabled)
 {
+//    static char alphabet[] = {'A', 'C', 'G', 'T', '-'};
+//
+//    for(char c1 : alphabet) {
+//        for(char c2 : alphabet) {
+//            std::cout << c1 << " " << c2 << " " << _subsMatrix.getScore(c1, c2) << std::endl;
+//        }
+//    }
 }
 
 

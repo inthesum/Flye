@@ -3,8 +3,9 @@
 //Released under the BSD license (see LICENSE file)
 
 #include "general_polisher.h"
-#include "alignment.h"
+#include "alignment_avx.h"
 
+constexpr size_t batchSize = 4;
 
 void GeneralPolisher::polishBubble(Bubble& bubble,
                                    int64_t& alignmentNum,
@@ -20,6 +21,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 {
 	auto optimize = [this] (const std::string& candidate,
 							const std::vector<std::string>& branches,
+                            const size_t readsNum,
 							std::vector<StepInfo>& polishSteps,
                             int64_t& alignmentNum,
                             int64_t& deletionNum,
@@ -32,8 +34,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
                             std::chrono::duration<double>& substitutionDuration)
 	{
 		std::string prevCandidate = candidate;
-//		Alignment align(branches.size(), _subsMatrix);
-        Alignment align(branches.size(), _subsMatrix, branches);
+        AlignmentAVX align(branches.size(), _subsMatrix, branches);
         size_t iterNum = 0;
 		while(true)
 		{
@@ -41,6 +42,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 
             StepInfo rec = this->makeStep(prevCandidate,
                                           branches,
+                                          readsNum,
                                           align,
                                           alignmentNum,
                                           deletionNum,
@@ -74,20 +76,29 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 	//first, select closest X branches (by length) and polish with them
     const int PRE_POLISH = 5;
     std::string prePolished = bubble.candidate;
+
+    std::sort(bubble.branches.begin(), bubble.branches.end(),
+              [](const std::string& s1, const std::string& s2)
+              {return s1.length() < s2.length();});
+
     if (bubble.branches.size() > PRE_POLISH * 2)
     {
-        std::sort(bubble.branches.begin(), bubble.branches.end(),
-                  [](const std::string& s1, const std::string& s2)
-                  {return s1.length() < s2.length();});
         size_t left = bubble.branches.size() / 2 - PRE_POLISH / 2;
         size_t right = left + PRE_POLISH;
         std::vector<std::string> reducedSet(bubble.branches.begin() + left,
                                             bubble.branches.begin() + right);
 
+        const size_t readsNum = PRE_POLISH;
+        const size_t extendedReadsNum = batchSize - readsNum % batchSize;
+        std::vector<std::string>& extendedReads = reducedSet;
+        std::string lastRead = reducedSet[readsNum - 1];
+        for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
+
         auto optimizeStart = std::chrono::high_resolution_clock::now();
 
         prePolished = optimize(prePolished,
-                               reducedSet,
+                               extendedReads,
+                               readsNum,
                                bubble.polishSteps,
                                alignmentNum,
                                deletionNum,
@@ -104,11 +115,18 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
     }
 
 	//then, polish with all branches
+    const size_t readsNum = bubble.branches.size();
+    const size_t extendedReadsNum = batchSize - readsNum % batchSize;
+    std::vector<std::string>& extendedReads = bubble.branches;
+    std::string lastRead = bubble.branches[readsNum - 1];
+    for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
+
     auto optimizeStart = std::chrono::high_resolution_clock::now();
 
     bubble.candidate = optimize(prePolished,
-                                bubble.branches,
-								bubble.polishSteps,
+                                extendedReads,
+                                readsNum,
+                                bubble.polishSteps,
                                 alignmentNum,
                                 deletionNum,
                                 insertionNum,
@@ -121,11 +139,14 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 
     auto optimizeEnd = std::chrono::high_resolution_clock::now();
     optimizeDuration += optimizeEnd - optimizeStart;
+
+    for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.pop_back();
 }
 
 StepInfo GeneralPolisher::makeStep(const std::string& candidate,
                                    const std::vector<std::string>& branches,
-                                   Alignment& align,
+                                   const size_t readsNum,
+                                   AlignmentAVX& align,
                                    int64_t& alignmentNum,
                                    int64_t& deletionNum,
                                    int64_t& insertionNum,
@@ -141,7 +162,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     //Alignment
     auto alignmentStart = std::chrono::high_resolution_clock::now();
 
-    AlnScoreType score = align.globalAlignment(candidate, branches);
+    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum);
     stepResult.score = score;
     stepResult.sequence = candidate;
     alignmentNum++;
@@ -155,7 +176,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     bool improvement = false;
     for (size_t pos = 0; pos < candidate.size(); ++pos)
     {
-        AlnScoreType score = align.addDeletion(pos + 1);
+        AlnScoreType score = align.addDeletionAVX(pos + 1, readsNum);
 
         if (score > stepResult.score)
         {
@@ -179,7 +200,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     {
         for (char letter : alphabet)
         {
-            AlnScoreType score = align.addInsertion(pos + 1, letter, branches);
+            AlnScoreType score = align.addInsertionAVX(pos + 1, letter, branches, readsNum);
             if (score > stepResult.score)
             {
                 stepResult.score = score;
@@ -205,8 +226,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
         {
             if (letter == candidate[pos]) continue;
 
-            AlnScoreType score = align.addSubstitution(pos + 1, letter,
-                                                       branches);
+            AlnScoreType score = align.addSubstitutionAVX(pos + 1, letter, branches, readsNum);
             if (score > stepResult.score)
             {
                 stepResult.score = score;

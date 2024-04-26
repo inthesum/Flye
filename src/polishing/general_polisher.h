@@ -8,7 +8,7 @@
 
 #include "bubble.h"
 #include "subs_matrix.h"
-#include "alignment.h"
+#include "alignment_avx.h"
 
 class GeneralPolisher
 {
@@ -32,10 +32,11 @@ public:
 private:
 	StepInfo makeStep(const std::string& candidate, 
 					  const std::vector<std::string>& branches,
-					  Alignment& align) const;
+					  AlignmentAVX& align) const;
     StepInfo makeStep(const std::string& candidate,
                       const std::vector<std::string>& branches,
-                      Alignment& align,
+                      const size_t readsNum,
+                      AlignmentAVX& align,
                       int64_t& alignmentNum,
                       int64_t& deletionNum,
                       int64_t& insertionNum,
