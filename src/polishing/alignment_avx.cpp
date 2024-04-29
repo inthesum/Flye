@@ -117,7 +117,30 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                     crossSubsMatrix.at(j, b) = _subsMatrix.getScore(v[i - 1], w[j]);
             }
 
-            for (size_t j = 1; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
+            for (size_t j = 1; j < _readsSize[k]; j++, leftScoreIndex += z, crossScoreIndex += z,
+                                           leftSubScoreIndex += z, crossSubScoreIndex += z)
+            {
+                __m256i leftScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
+                __m256i leftSubScore = _mm256_loadu_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
+                __m256i left = _mm256_add_epi64(leftScore, leftSubScore);
+
+                size_t upScoreIndex = crossScoreIndex + z;
+                __m256i upScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + upScoreIndex));
+                __m256i up = _mm256_add_epi64(upScore, upSubScore);
+
+                __m256i crossScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
+                __m256i crossSubScore = _mm256_loadu_si256((__m256i*)(crossSubsMatrix.data() + crossSubScoreIndex));
+                __m256i cross = _mm256_add_epi64(crossScore, crossSubScore);
+
+                score = mm256_max_epi64(left, up);
+                score = mm256_max_epi64(score, cross);
+
+                _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
+            }
+
+            // Deal with various reads' length
+            // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
+            for (size_t j = _readsSize[k]; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
                 __m256i leftScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
@@ -202,7 +225,9 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                     crossSubsMatrix.at(j, b) = _subsMatrix.getScore(v[i - 1], w[j]);
             }
 
-            for (size_t j = y - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
+            // Deal with various reads' length
+            // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
+            for (size_t j = y - 1; j >= _readsSize[k]; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
                 __m256i rightScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
@@ -223,6 +248,27 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                 __m256i _j = _mm256_set1_epi64x(j);
                 __m256i cmp_mask = _mm256_cmpgt_epi64(_j, _cols);
                 score = _mm256_blendv_epi8(score, prevScore, cmp_mask);
+
+                _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
+            }
+
+            for (size_t j = _readsSize[k] - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
+                                                rightSubScoreIndex -= z, crossSubScoreIndex -= z)
+            {
+                __m256i rightScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
+                __m256i rightSubScore = _mm256_loadu_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
+                __m256i right = _mm256_add_epi64(rightScore, rightSubScore);
+
+                size_t downScoreIndex = crossScoreIndex - z;
+                __m256i downScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + downScoreIndex));
+                __m256i down = _mm256_add_epi64(downScore, downSubScore);
+
+                __m256i crossScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
+                __m256i crossSubScore = _mm256_loadu_si256((__m256i*)(crossSubsMatrix.data() + crossSubScoreIndex));
+                __m256i cross = _mm256_add_epi64(crossScore, crossSubScore);
+
+                score = mm256_max_epi64(right, down);
+                score = mm256_max_epi64(score, cross);
 
                 _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
             }
