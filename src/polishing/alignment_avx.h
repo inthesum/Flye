@@ -32,6 +32,10 @@ public:
     AlnScoreType addDeletionAVX(unsigned int letterIndex,
                                 const size_t readsNum) const;
 
+    AlnScoreType addSubsAndInsertAVX(size_t frontRow, size_t revRow,
+                                     char base, const std::vector <std::string> &reads,
+                                     const size_t readsNum) const;
+
     AlnScoreType addSubstitutionAVX(unsigned int letterIndex,
                                     char base, const std::vector <std::string> &reads,
                                     const size_t readsNum) const;
