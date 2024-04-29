@@ -289,59 +289,8 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
     size_t revRow = letterIndex;
 
     AlnScoreType finalScore = 0;
-    __m256i _finalScore = _mm256_set1_epi64x(finalScore);
 
-    for (size_t readId = 0; readId < extendedReadsNum - batchSize; readId += batchSize) {
-        const ScoreMatrix3d& forwardScores = _forwardScores[readId / batchSize];
-        const ScoreMatrix3d& reverseScores = _reverseScores[readId / batchSize];
-
-        size_t y = forwardScores.ncols();
-        size_t z = batchSize;
-
-        size_t frontIndex = frontRow * y * z; // (frontRow, 0)
-        size_t reverseIndex = revRow * y * z; // (revRow, 0)
-        const AlnScoreType* frontPtr = forwardScores.data() + frontIndex;
-        const AlnScoreType* reversePtr = reverseScores.data() + reverseIndex;
-
-        AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
-        __m256i _maxVal = _mm256_set1_epi64x(maxVal);
-
-        for (size_t col = 0; col < _readsSize[readId]; ++col, frontPtr += z, reversePtr += z)
-        {
-            __m256i forwardScore = _mm256_loadu_si256((__m256i*)(frontPtr));
-            __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
-            __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
-            _maxVal = mm256_max_epi64(_maxVal, sum);
-        }
-
-        // Deal with various reads' length
-        // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-        __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + readId));
-        for (size_t col = _readsSize[readId]; col < y; ++col, frontPtr += z, reversePtr += z)
-        {
-            __m256i forwardScore = _mm256_loadu_si256((__m256i*)(frontPtr));
-            __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
-            __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
-
-            __m256i _preMaxVal = _maxVal;
-            _maxVal = mm256_max_epi64(_maxVal, sum);
-            __m256i _col = _mm256_set1_epi64x(col);
-            __m256i cmp_mask = _mm256_cmpgt_epi64(_col, _cols);
-            _maxVal = _mm256_blendv_epi8(_maxVal, _preMaxVal, cmp_mask);
-        }
-        _finalScore = _mm256_add_epi64(_finalScore, _maxVal);
-    }
-
-    alignas(32) AlnScoreType scores[batchSize];
-    _mm256_store_si256((__m256i*)scores, _finalScore);
-
-    for(size_t b = 0; b < batchSize; b++)
-        finalScore += scores[b];
-
-    // Deal with extended number of reads
-    // readsNum -> extendedReadsNum
-    size_t readId = extendedReadsNum - batchSize;
-    {
+    for (size_t readId = 0; readId < extendedReadsNum; readId += batchSize) {
         const ScoreMatrix3d& forwardScores = _forwardScores[readId / batchSize];
         const ScoreMatrix3d& reverseScores = _reverseScores[readId / batchSize];
 
@@ -441,82 +390,11 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
     const size_t extendedReadsNum = reads.size();
 
     AlnScoreType finalScore = 0;
-    __m256i _finalScore = _mm256_set1_epi64x(finalScore);
 
     AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
     __m256i _baseScoreWithGap = _mm256_set1_epi64x(baseScoreWithGap);
 
-    for (size_t readId = 0; readId < extendedReadsNum - batchSize; readId += batchSize) {
-        const ScoreMatrix3d& forwardScores = _forwardScores[readId / batchSize];
-        const ScoreMatrix3d& reverseScores = _reverseScores[readId / batchSize];
-        const ScoreMatrix& subsScores = _subsScores[readId / batchSize];
-
-        size_t y = forwardScores.ncols();
-        size_t z = batchSize;
-
-        size_t frontIndex = frontRow * y * z; // (frontRow, 0)
-        size_t reverseIndex = revRow * y * z; // (revRow, 0)
-        size_t subIndex = 0;
-        const AlnScoreType* frontPtr = forwardScores.data() + frontIndex;
-        const AlnScoreType* reversePtr = reverseScores.data() + reverseIndex;
-        const AlnScoreType* subPtr = subsScores.data() + subIndex;
-
-        __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + readId));
-        __m256i _one = _mm256_set1_epi64x(-1);
-        _cols = _mm256_add_epi64(_cols, _one);
-
-        __m256i forwardScore = _mm256_loadu_si256((__m256i*)(frontPtr));
-        __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
-        __m256i _maxVal = _mm256_add_epi64(forwardScore, reverseScore);
-        _maxVal = _mm256_add_epi64(_maxVal, _baseScoreWithGap);
-
-        for (size_t col = 0; col < _readsSize[readId]; ++col, subPtr += z, frontPtr += z, reversePtr += z)
-        {
-            __m256i subScore = _mm256_loadu_si256((__m256i*)(subPtr));
-            __m256i forwardScoreCurrent = _mm256_loadu_si256((__m256i*)(frontPtr));
-            __m256i forwardScoreNext = _mm256_loadu_si256((__m256i*)(frontPtr + z));
-            __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reversePtr + z));
-
-            __m256i matchScore = _mm256_add_epi64(forwardScoreCurrent, subScore);
-            __m256i insertScore = _mm256_add_epi64(forwardScoreNext, _baseScoreWithGap);
-            __m256i tempMaxScore = mm256_max_epi64(matchScore, insertScore);
-            __m256i sum = _mm256_add_epi64(reverseScoreNext, tempMaxScore);
-            _maxVal = mm256_max_epi64(_maxVal, sum);
-        }
-
-        // Deal with various reads' length
-        // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-        for (size_t col = _readsSize[readId]; col < y - 1; ++col, subPtr += z, frontPtr += z, reversePtr += z)
-        {
-            __m256i subScore = _mm256_loadu_si256((__m256i*)(subPtr));
-            __m256i forwardScoreCurrent = _mm256_loadu_si256((__m256i*)(frontPtr));
-            __m256i forwardScoreNext = _mm256_loadu_si256((__m256i*)(frontPtr + z));
-            __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reversePtr + z));
-
-            __m256i matchScore = _mm256_add_epi64(forwardScoreCurrent, subScore);
-            __m256i insertScore = _mm256_add_epi64(forwardScoreNext, _baseScoreWithGap);
-            __m256i tempMaxScore = mm256_max_epi64(matchScore, insertScore);
-            __m256i sum = _mm256_add_epi64(reverseScoreNext, tempMaxScore);
-
-            __m256i _preMaxVal = _maxVal;
-            _maxVal = mm256_max_epi64(_maxVal, sum);
-            __m256i _col = _mm256_set1_epi64x(col);
-            __m256i cmp_mask = _mm256_cmpgt_epi64(_col, _cols);
-            _maxVal = _mm256_blendv_epi8(_maxVal, _preMaxVal, cmp_mask);
-        }
-        _finalScore = _mm256_add_epi64(_finalScore, _maxVal);
-    }
-
-    alignas(32) AlnScoreType scores[batchSize];
-    _mm256_store_si256((__m256i*)scores, _finalScore);
-
-    for(size_t b = 0; b < batchSize; b++)
-        finalScore += scores[b];
-
-    // Deal with extended number of reads
-    // readsNum -> extendedReadsNum
-    size_t readId = extendedReadsNum - batchSize;
-    {
+    for (size_t readId = 0; readId < extendedReadsNum; readId += batchSize) {
         const ScoreMatrix3d& forwardScores = _forwardScores[readId / batchSize];
         const ScoreMatrix3d& reverseScores = _reverseScores[readId / batchSize];
         const ScoreMatrix& subsScores = _subsScores[readId / batchSize];
