@@ -196,6 +196,11 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     auto alignmentEnd = std::chrono::high_resolution_clock::now();
     alignmentDuration += alignmentEnd - alignmentStart;
 
+//    AlnScoreType score = align.globalAlignment(candidate, branches, alignmentDuration);
+//    stepResult.score = score;
+//    stepResult.sequence = candidate;
+//    alignmentNum++;
+
     //Deletion
     auto deletionStart = std::chrono::high_resolution_clock::now();
 

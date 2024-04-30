@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <stdexcept>
+#include <chrono>
 
 #include "../common/matrix.h"
 #include "subs_matrix.h"
@@ -23,6 +24,9 @@ public:
 
     AlnScoreType globalAlignment(const std::string &consensus,
                                  const std::vector <std::string> &reads);
+    AlnScoreType globalAlignment(const std::string &consensus,
+                                 const std::vector <std::string> &reads,
+                                 std::chrono::duration<double>& alignmentDuration);
 
     AlnScoreType addDeletion(unsigned int letterIndex) const;
 

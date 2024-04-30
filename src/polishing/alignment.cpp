@@ -3,7 +3,6 @@
 //Released under the BSD license (see LICENSE file)
 
 #include "alignment.h"
-#include <immintrin.h> // Include SIMD intrinsics header
 
 
 Alignment::Alignment(size_t size, const SubstitutionMatrix& sm):
@@ -30,6 +29,43 @@ AlnScoreType Alignment::globalAlignment(const std::string& consensus,
         ScoreMatrix scoreMatRev(x, y, 0);
         this->getRevScoringMatrix(consensus, reads[readId], scoreMatRev);
         _reverseScores[readId] = std::move(scoreMatRev);
+
+        finalScore += score;
+    }
+
+    return finalScore;
+}
+
+AlnScoreType Alignment::globalAlignment(const std::string &consensus,
+                             const std::vector <std::string> &reads,
+                             std::chrono::duration<double>& alignmentDuration)
+{
+    AlnScoreType finalScore = 0;
+    for (size_t readId = 0; readId < _forwardScores.size(); ++readId)
+    {
+        unsigned int x = consensus.size() + 1;
+        unsigned int y = reads[readId].size() + 1;
+
+        ScoreMatrix scoreMat(x, y, 0);
+
+        auto alignmentStart = std::chrono::high_resolution_clock::now();
+
+        AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
+        _forwardScores[readId] = std::move(scoreMat);
+
+        auto alignmentEnd = std::chrono::high_resolution_clock::now();
+        alignmentDuration += alignmentEnd - alignmentStart;
+
+
+        ScoreMatrix scoreMatRev(x, y, 0);
+
+        alignmentStart = std::chrono::high_resolution_clock::now();
+
+        this->getRevScoringMatrix(consensus, reads[readId], scoreMatRev);
+        _reverseScores[readId] = std::move(scoreMatRev);
+
+        alignmentEnd = std::chrono::high_resolution_clock::now();
+        alignmentDuration += alignmentEnd - alignmentStart;
 
         finalScore += score;
     }
