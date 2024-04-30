@@ -55,7 +55,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 
             auto makeStepEnd = std::chrono::high_resolution_clock::now();
             makeStepDuration += makeStepEnd - makeStepStart;
-            
+
 			polishSteps.push_back(rec);
 			if (prevCandidate == rec.sequence) break;
 			if (rec.score > 0)
@@ -170,6 +170,11 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     auto alignmentEnd = std::chrono::high_resolution_clock::now();
     alignmentDuration += alignmentEnd - alignmentStart;
 
+//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, alignmentDuration);
+//    stepResult.score = score;
+//    stepResult.sequence = candidate;
+//    alignmentNum++;
+
     //Deletion
     auto deletionStart = std::chrono::high_resolution_clock::now();
 
@@ -177,6 +182,7 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     for (size_t pos = 0; pos < candidate.size(); ++pos)
     {
         AlnScoreType score = align.addDeletionAVX(pos + 1, readsNum);
+//        AlnScoreType score = align.addDeletionAVX(pos + 1, readsNum, deletionDuration);
 
         if (score > stepResult.score)
         {

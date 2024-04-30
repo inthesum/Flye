@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <memory>
+#include <chrono>
 
 #include "../common/matrix.h"
 #include "../common/matrix3d.h"
@@ -28,9 +29,16 @@ public:
     AlnScoreType globalAlignmentAVX(const std::string &consensus,
                                     const std::vector <std::string> &reads,
                                     const size_t readsNum);
+//    AlnScoreType globalAlignmentAVX(const std::string &consensus,
+//                                    const std::vector <std::string> &reads,
+//                                    const size_t readsNum,
+//                                    std::chrono::duration<double>& alignmentDuration);
 
     AlnScoreType addDeletionAVX(unsigned int letterIndex,
                                 const size_t readsNum) const;
+//    AlnScoreType addDeletionAVX(unsigned int letterIndex,
+//                                const size_t readsNum,
+//                                std::chrono::duration<double>& deletionDuration) const;
 
     AlnScoreType addSubsAndInsertAVX(size_t frontRow, size_t revRow,
                                      char base, const std::vector <std::string> &reads,
