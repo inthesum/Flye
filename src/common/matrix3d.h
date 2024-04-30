@@ -8,14 +8,14 @@ class Matrix3d
 {
 public:
     Matrix3d(): _rows(0), _cols(0), _depth(0), _data(nullptr) {}
-    Matrix3d(const Matrix3d& other):
-            Matrix3d(other._rows, other._cols, other._depth)
-    {
-        for (size_t i = 0; i < _rows; ++i)
-            for (size_t j = 0; j < _cols; ++j)
-                for(size_t k = 0; k < _depth; ++k)
-                    this->at(i, j, k) = other.at(i, j, k);
-    }
+//    Matrix3d(const Matrix3d& other):
+//            Matrix3d(other._rows, other._cols, other._depth)
+//    {
+//        for (size_t i = 0; i < _rows; ++i)
+//            for (size_t j = 0; j < _cols; ++j)
+//                for(size_t k = 0; k < _depth; ++k)
+//                    this->at(i, j, k) = other.at(i, j, k);
+//    }
     Matrix3d(Matrix3d&& other):
             Matrix3d()
     {
@@ -47,8 +47,10 @@ public:
         if (!rows || !cols || !depth)
             throw std::runtime_error("Zero matrix dimension");
         _data = new T[rows * cols * depth];
-        for (size_t i = 0; i < rows * cols * depth; ++i) _data[i] = val;
     }
+//    Matrix3d(T* data, size_t rows, size_t cols, size_t depth):
+//            _data(data), _rows(rows), _cols(cols), _depth(depth)
+//    {}
     ~Matrix3d()
     {
         if (_data) delete[] _data;

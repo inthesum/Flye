@@ -66,6 +66,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //                                              const std::vector<std::string>& reads,
 //                                              const size_t readsNum,
+//                                              ScoreMemoryPool& memoryPool,
 //                                              std::chrono::duration<double>& alignmentDuration)
 {
     AlnScoreType finalScore = 0;
@@ -80,8 +81,10 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         size_t z = batchSize;
 
         ScoreMatrix3d scoreMatrix(x, y, z, 0);
-        ScoreMatrix leftSubsMatrix(y - 1, z, 0);
+//        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
+//        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
+        ScoreMatrix leftSubsMatrix(y - 1, z, 0);
         ScoreMatrix crossSubsMatrixA(y - 1, z, 0);
         ScoreMatrix crossSubsMatrixC(y - 1, z, 0);
         ScoreMatrix crossSubsMatrixG(y - 1, z, 0);
@@ -92,6 +95,8 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         for(size_t b = 0; b < batchSize; b++) {
             const std::string w = reads[k + b];
             _readsSize[k + b] = w.size();
+
+            scoreMatrix.at(0, 0, b) = 0;
 
             for (size_t i = 0; i < v.size(); i++)
             {
@@ -121,7 +126,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             size_t leftSubScoreIndex = 0;
             __m256i upSubScore = _mm256_set1_epi64x(_subsMatrix.getScore(v[i - 1], '-'));
 
-//            auto alignmentStart = std::chrono::high_resolution_clock::now();
             size_t crossSubScoreIndex = 0;
             AlnScoreType* crossSubsMatrix;
             switch (v[i - 1]) {
@@ -140,8 +144,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                 default:
                     std::cout << "Wrong base!" << std::endl;
             }
-//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
-//            alignmentDuration += alignmentEnd - alignmentStart;
 
             for (size_t j = 1; j < _readsSize[k]; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
@@ -211,10 +213,10 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         size_t z = batchSize;
 
         ScoreMatrix3d scoreMatrix(x, y, z, 0);
+//        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
+//        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
         ScoreMatrix leftSubsMatrix(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrix(y - 1, z, 0);
-
         ScoreMatrix crossSubsMatrixA(y - 1, z, 0);
         ScoreMatrix crossSubsMatrixC(y - 1, z, 0);
         ScoreMatrix crossSubsMatrixG(y - 1, z, 0);
@@ -224,6 +226,8 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 
         for(size_t b = 0; b < batchSize; b++) {
             const std::string w = reads[k + b];
+
+            scoreMatrix.at(v.size(), w.size(), b) = 0;
 
             for (int i = v.size() - 1; i >= 0; i--)
             {
@@ -254,8 +258,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             size_t rightSubScoreIndex = (y - 2) * z;
             __m256i downSubScore = _mm256_set1_epi64x(_subsMatrix.getScore(v[i - 1], '-'));
 
-//            auto alignmentStart = std::chrono::high_resolution_clock::now();
-
             size_t crossSubScoreIndex = (y - 2) * z; // (v.size() - 1, w.size() - 1)
             AlnScoreType* crossSubsMatrix;
             switch (v[i - 1]) {
@@ -274,9 +276,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                 default:
                     std::cout << "Wrong base!" << std::endl;
             }
-
-//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
-//            alignmentDuration += alignmentEnd - alignmentStart;
 
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]

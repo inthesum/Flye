@@ -16,6 +16,9 @@ public:
 	GeneralPolisher(const SubstitutionMatrix& subsMatrix):
 		_subsMatrix(subsMatrix)
 	{}
+
+    typedef MemoryPool<AlnScoreType> ScoreMemoryPool;
+
     void polishBubble(Bubble& bubble) const;
     void polishBubble(Bubble& bubble,
                       int64_t& alignmentNum,
@@ -37,6 +40,7 @@ private:
                       const std::vector<std::string>& branches,
                       const size_t readsNum,
                       AlignmentAVX& align,
+//                      ScoreMemoryPool& memoryPool,
                       int64_t& alignmentNum,
                       int64_t& deletionNum,
                       int64_t& insertionNum,
