@@ -364,7 +364,7 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
 
         for (size_t col = 0; col < _readsSize[readId]; ++col, frontPtr += z, reversePtr += z)
         {
-            __m256i forwardScore = _mm256_loadu_si256((__m256i*)(frontPtr));
+            __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr));
             __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
             _maxVal = mm256_max_epi64(_maxVal, sum);
@@ -378,7 +378,7 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
         __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + readId));
         for (size_t col = _readsSize[readId]; col < y; ++col, frontPtr += z, reversePtr += z)
         {
-            __m256i forwardScore = _mm256_loadu_si256((__m256i*)(frontPtr));
+            __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr));
             __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
 
@@ -481,7 +481,7 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         for (size_t col = 0; col < _readsSize[readId]; ++col, subPtr += z, frontPtr += z, reversePtr += z)
         {
             __m256i subScore = _mm256_loadu_si256((__m256i*)(subPtr));
-            __m256i forwardScoreCurrent = _mm256_loadu_si256((__m256i*)(frontPtr));
+            __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr));
             __m256i forwardScoreNext = _mm256_loadu_si256((__m256i*)(frontPtr + z));
             __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reversePtr + z));
 
@@ -497,7 +497,7 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         for (size_t col = _readsSize[readId]; col < y - 1; ++col, subPtr += z, frontPtr += z, reversePtr += z)
         {
             __m256i subScore = _mm256_loadu_si256((__m256i*)(subPtr));
-            __m256i forwardScoreCurrent = _mm256_loadu_si256((__m256i*)(frontPtr));
+            __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr));
             __m256i forwardScoreNext = _mm256_loadu_si256((__m256i*)(frontPtr + z));
             __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reversePtr + z));
 

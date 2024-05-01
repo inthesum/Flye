@@ -98,7 +98,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
         std::string lastRead = reducedSet[readsNum - 1];
         for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
 
-        ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
+//        ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
 
         auto optimizeStart = std::chrono::high_resolution_clock::now();
 
