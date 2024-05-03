@@ -17,8 +17,6 @@ public:
 		_subsMatrix(subsMatrix)
 	{}
 
-    typedef MemoryPool<AlnScoreType> ScoreMemoryPool;
-
     void polishBubble(Bubble& bubble) const;
     void polishBubble(Bubble& bubble,
                       int64_t& alignmentNum,

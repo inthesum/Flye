@@ -3,32 +3,32 @@
 //Released under the BSD license (see LICENSE file)
 
 #include "alignment_avx.h"
-#include <immintrin.h> // Include SIMD intrinsics header
 
 constexpr size_t batchSize = 4; // Use constexpr for batch size
 
 AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std::vector <std::string> &reads):
-    _forwardScores(size / batchSize),
-    _reverseScores(size / batchSize),
     _subsMatrix(sm),
-    _subsScoresA(size / batchSize),
-    _subsScoresC(size / batchSize),
-    _subsScoresG(size / batchSize),
-    _subsScoresT(size / batchSize)
+    _forwardScores(size/batchSize),
+    _reverseScores(size/batchSize),
+    _subsScoresA(size/batchSize),
+    _subsScoresC(size/batchSize),
+    _subsScoresG(size/batchSize),
+    _subsScoresT(size/batchSize)
 {
-    const size_t extendedK = reads.size();
-    _readsSize = new AlnScoreType [extendedK];
-    for (size_t k = 0; k < extendedK; k += batchSize)
+    const size_t extendedReads = reads.size();
+    _readsSize = (AlnScoreType*)_mm_malloc(extendedReads * sizeof(AlnScoreType), 32);
+
+    for (size_t readId = 0; readId < extendedReads; readId += batchSize)
     {
-        size_t x = reads[k+batchSize-1].size();
+        size_t x = reads[readId + batchSize - 1].size();
         size_t y = batchSize;
-        ScoreMatrix subsScoresA(x, y, 0);
-        ScoreMatrix subsScoresC(x, y, 0);
-        ScoreMatrix subsScoresG(x, y, 0);
-        ScoreMatrix subsScoresT(x, y, 0);
+        ScoreMatrix subsScoresA(x, y);
+        ScoreMatrix subsScoresC(x, y);
+        ScoreMatrix subsScoresG(x, y);
+        ScoreMatrix subsScoresT(x, y);
 
         for(size_t b = 0; b < batchSize; b++) {
-            const std::string w = reads[k + b];
+            const std::string w = reads[readId + b];
             for (size_t i = 0; i < w.size(); i++) {
                 subsScoresA.at(i, b) = _subsMatrix.getScore('A', w[i]);
                 subsScoresC.at(i, b) = _subsMatrix.getScore('C', w[i]);
@@ -37,15 +37,15 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
             }
         }
 
-        _subsScoresA[k / batchSize] = std::move(subsScoresA);
-        _subsScoresC[k / batchSize] = std::move(subsScoresC);
-        _subsScoresG[k / batchSize] = std::move(subsScoresG);
-        _subsScoresT[k / batchSize] = std::move(subsScoresT);
+        _subsScoresA[readId/batchSize] = std::move(subsScoresA);
+        _subsScoresC[readId/batchSize] = std::move(subsScoresC);
+        _subsScoresG[readId/batchSize] = std::move(subsScoresG);
+        _subsScoresT[readId/batchSize] = std::move(subsScoresT);
     }
 }
 
 AlignmentAVX::~AlignmentAVX() {
-    delete[] _readsSize;
+    _mm_free(_readsSize);
 }
 
 
@@ -66,35 +66,38 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //                                              const std::vector<std::string>& reads,
 //                                              const size_t readsNum,
-//                                              ScoreMemoryPool& memoryPool,
+//                                              ScoreMemoryPool& memoryPool)
+//AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
+//                                              const std::vector<std::string>& reads,
+//                                              const size_t readsNum,
+////                                              ScoreMemoryPool& memoryPool,
 //                                              std::chrono::duration<double>& alignmentDuration)
 {
     AlnScoreType finalScore = 0;
-    const size_t K = readsNum;
-    const size_t extendedK = reads.size();
+    const size_t extendedReads = reads.size();
 
     // getScoringMatrix
-    for (size_t k = 0; k < extendedK; k += batchSize)
+    for (size_t readId = 0; readId < extendedReads; readId += batchSize)
     {
         size_t x = consensus.size() + 1;
-        size_t y = reads[k+batchSize-1].size() + 1;
+        size_t y = reads[readId + batchSize - 1].size() + 1;
         size_t z = batchSize;
 
-        ScoreMatrix3d scoreMatrix(x, y, z, 0);
+        ScoreMatrix3d scoreMatrix(x, y, z);
 //        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
 //        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
-        ScoreMatrix leftSubsMatrix(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixA(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixC(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixG(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixT(y - 1, z, 0);
+        ScoreMatrix leftSubsMatrix(y - 1, z);
+        ScoreMatrix crossSubsMatrixA(y - 1, z);
+        ScoreMatrix crossSubsMatrixC(y - 1, z);
+        ScoreMatrix crossSubsMatrixG(y - 1, z);
+        ScoreMatrix crossSubsMatrixT(y - 1, z);
 
         const std::string v = consensus;
 
         for(size_t b = 0; b < batchSize; b++) {
-            const std::string w = reads[k + b];
-            _readsSize[k + b] = w.size();
+            const std::string w = reads[readId + b];
+            _readsSize[readId + b] = w.size();
 
             scoreMatrix.at(0, 0, b) = 0;
 
@@ -119,7 +122,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         size_t crossScoreIndex = 0;
 
         __m256i score = _mm256_set1_epi64x(0);
-        __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + k));
+        __m256i _cols = _mm256_load_si256((__m256i*)(_readsSize + readId));
 
         for (size_t i = 1; i < x; i++, leftScoreIndex += z, crossScoreIndex += z)
         {
@@ -127,60 +130,61 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             __m256i upSubScore = _mm256_set1_epi64x(_subsMatrix.getScore(v[i - 1], '-'));
 
             size_t crossSubScoreIndex = 0;
-            AlnScoreType* crossSubsMatrix;
+            const ScoreMatrix* crossSubsMatrixPtr;
             switch (v[i - 1]) {
                 case 'A':
-                    crossSubsMatrix = crossSubsMatrixA.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixA;
                     break;
                 case 'C':
-                    crossSubsMatrix = crossSubsMatrixC.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixC;
                     break;
                 case 'G':
-                    crossSubsMatrix = crossSubsMatrixG.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixG;
                     break;
                 case 'T':
-                    crossSubsMatrix = crossSubsMatrixT.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixT;
                     break;
                 default:
                     std::cout << "Wrong base!" << std::endl;
             }
+            const ScoreMatrix& crossSubsMatrix = *crossSubsMatrixPtr;
 
-            for (size_t j = 1; j < _readsSize[k]; j++, leftScoreIndex += z, crossScoreIndex += z,
+//            auto alignmentStart = std::chrono::high_resolution_clock::now();
+
+            for (size_t j = 1; j < _readsSize[readId]; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
-                __m256i leftScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
-                __m256i leftSubScore = _mm256_loadu_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
+                __m256i leftScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
+                __m256i leftSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
                 __m256i left = _mm256_add_epi64(leftScore, leftSubScore);
 
-                size_t upScoreIndex = crossScoreIndex + z;
-                __m256i upScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + upScoreIndex));
+                __m256i upScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex + z));
                 __m256i up = _mm256_add_epi64(upScore, upSubScore);
 
-                __m256i crossScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
-                __m256i crossSubScore = _mm256_loadu_si256((__m256i*)(crossSubsMatrix + crossSubScoreIndex));
+                __m256i crossScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
+                __m256i crossSubScore = _mm256_load_si256((__m256i*)(crossSubsMatrix.data() + crossSubScoreIndex));
                 __m256i cross = _mm256_add_epi64(crossScore, crossSubScore);
 
                 score = mm256_max_epi64(left, up);
                 score = mm256_max_epi64(score, cross);
 
-                _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
+                _mm256_store_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
             }
 
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-            for (size_t j = _readsSize[k]; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
+            for (size_t j = _readsSize[readId]; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
-                __m256i leftScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
-                __m256i leftSubScore = _mm256_loadu_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
+                __m256i leftScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
+                __m256i leftSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
                 __m256i left = _mm256_add_epi64(leftScore, leftSubScore);
 
-                size_t upScoreIndex = crossScoreIndex + z;
-                __m256i upScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + upScoreIndex));
+                __m256i upScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex + z));
                 __m256i up = _mm256_add_epi64(upScore, upSubScore);
 
-                __m256i crossScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
-                __m256i crossSubScore = _mm256_loadu_si256((__m256i*)(crossSubsMatrix + crossSubScoreIndex));
+                __m256i crossScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
+                __m256i crossSubScore = _mm256_load_si256((__m256i*)(crossSubsMatrix.data() + crossSubScoreIndex));
                 __m256i cross = _mm256_add_epi64(crossScore, crossSubScore);
 
                 __m256i prevScore = score;
@@ -190,42 +194,46 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                 __m256i cmp_mask = _mm256_cmpgt_epi64(_j, _cols);
                 score = _mm256_blendv_epi8(score, prevScore, cmp_mask);
 
-                _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
+                _mm256_store_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
             }
+
+//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
+//            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
-        alignas(32) AlnScoreType scores[batchSize];
+        alignas(64) AlnScoreType scores[batchSize];
+//        AlnScoreType scores[batchSize] __attribute((aligned(64)));
         _mm256_store_si256((__m256i*)scores, score);
 
-        _forwardScores[k / batchSize] = std::move(scoreMatrix);
+        _forwardScores[readId / batchSize] = std::move(scoreMatrix);
 
         for(size_t b = 0; b < batchSize; b++)
-            if((k + b) < K)
+            if((readId + b) < readsNum)
                 finalScore += scores[b];
     }
 
 
     // getRevScoringMatrix
-    for (size_t k = 0; k < extendedK; k += batchSize)
+    for (size_t readId = 0; readId < extendedReads; readId += batchSize)
     {
         size_t x = consensus.size() + 1;
-        size_t y = reads[k+batchSize-1].size() + 1;
+        size_t y = reads[readId+batchSize-1].size() + 1;
         size_t z = batchSize;
 
-        ScoreMatrix3d scoreMatrix(x, y, z, 0);
+        ScoreMatrix3d scoreMatrix(x, y, z);
 //        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
 //        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
-        ScoreMatrix leftSubsMatrix(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixA(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixC(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixG(y - 1, z, 0);
-        ScoreMatrix crossSubsMatrixT(y - 1, z, 0);
+        ScoreMatrix leftSubsMatrix(y - 1, z);
+        ScoreMatrix crossSubsMatrixA(y - 1, z);
+        ScoreMatrix crossSubsMatrixC(y - 1, z);
+        ScoreMatrix crossSubsMatrixG(y - 1, z);
+        ScoreMatrix crossSubsMatrixT(y - 1, z);
 
         const std::string v = consensus;
 
         for(size_t b = 0; b < batchSize; b++) {
-            const std::string w = reads[k + b];
+            const std::string w = reads[readId + b];
 
             scoreMatrix.at(v.size(), w.size(), b) = 0;
 
@@ -250,7 +258,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         size_t crossScoreIndex = (x - 1) * y * z + (y - 1) * z; // (v.size(), w.size())
 
         __m256i score;
-        __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + k));
+        __m256i _cols = _mm256_load_si256((__m256i*)(_readsSize + readId));
 
         for (size_t i = x - 1; i >= 1; i--, rightScoreIndex -= z, crossScoreIndex -= z)
         {
@@ -259,74 +267,78 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             __m256i downSubScore = _mm256_set1_epi64x(_subsMatrix.getScore(v[i - 1], '-'));
 
             size_t crossSubScoreIndex = (y - 2) * z; // (v.size() - 1, w.size() - 1)
-            AlnScoreType* crossSubsMatrix;
+            const ScoreMatrix* crossSubsMatrixPtr;
             switch (v[i - 1]) {
                 case 'A':
-                    crossSubsMatrix = crossSubsMatrixA.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixA;
                     break;
                 case 'C':
-                    crossSubsMatrix = crossSubsMatrixC.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixC;
                     break;
                 case 'G':
-                    crossSubsMatrix = crossSubsMatrixG.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixG;
                     break;
                 case 'T':
-                    crossSubsMatrix = crossSubsMatrixT.data();
+                    crossSubsMatrixPtr = &crossSubsMatrixT;
                     break;
                 default:
                     std::cout << "Wrong base!" << std::endl;
             }
+            const ScoreMatrix& crossSubsMatrix = *crossSubsMatrixPtr;
+
+//            auto alignmentStart = std::chrono::high_resolution_clock::now();
 
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-            for (size_t j = y - 1; j >= _readsSize[k]; j--, rightScoreIndex -= z, crossScoreIndex -= z,
+            for (size_t j = y - 1; j >= _readsSize[readId]; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
-                __m256i rightScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
-                __m256i rightSubScore = _mm256_loadu_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
+                __m256i rightScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
+                __m256i rightSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
                 __m256i right = _mm256_add_epi64(rightScore, rightSubScore);
 
-                size_t downScoreIndex = crossScoreIndex - z;
-                __m256i downScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + downScoreIndex));
+                __m256i downScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex - z));
                 __m256i down = _mm256_add_epi64(downScore, downSubScore);
 
-                __m256i crossScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
-                __m256i crossSubScore = _mm256_loadu_si256((__m256i*)(crossSubsMatrix + crossSubScoreIndex));
+                __m256i crossScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
+                __m256i crossSubScore = _mm256_load_si256((__m256i*)(crossSubsMatrix.data() + crossSubScoreIndex));
                 __m256i cross = _mm256_add_epi64(crossScore, crossSubScore);
 
-                __m256i prevScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z));
+                __m256i prevScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z));
                 score = mm256_max_epi64(right, down);
                 score = mm256_max_epi64(score, cross);
                 __m256i _j = _mm256_set1_epi64x(j);
                 __m256i cmp_mask = _mm256_cmpgt_epi64(_j, _cols);
                 score = _mm256_blendv_epi8(score, prevScore, cmp_mask);
 
-                _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
+                _mm256_store_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
             }
 
-            for (size_t j = _readsSize[k] - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
+            for (size_t j = _readsSize[readId] - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
-                __m256i rightScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
-                __m256i rightSubScore = _mm256_loadu_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
+                __m256i rightScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
+                __m256i rightSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
                 __m256i right = _mm256_add_epi64(rightScore, rightSubScore);
 
-                size_t downScoreIndex = crossScoreIndex - z;
-                __m256i downScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + downScoreIndex));
+                __m256i downScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex - z));
                 __m256i down = _mm256_add_epi64(downScore, downSubScore);
 
-                __m256i crossScore = _mm256_loadu_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
-                __m256i crossSubScore = _mm256_loadu_si256((__m256i*)(crossSubsMatrix + crossSubScoreIndex));
+                __m256i crossScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + crossScoreIndex));
+                __m256i crossSubScore = _mm256_load_si256((__m256i*)(crossSubsMatrix.data() + crossSubScoreIndex));
                 __m256i cross = _mm256_add_epi64(crossScore, crossSubScore);
 
                 score = mm256_max_epi64(right, down);
                 score = mm256_max_epi64(score, cross);
 
-                _mm256_storeu_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
+                _mm256_store_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
             }
+
+//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
+//            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
-        _reverseScores[k / batchSize] = std::move(scoreMatrix);
+        _reverseScores[readId / batchSize] = std::move(scoreMatrix);
     }
 
     return finalScore;
@@ -362,10 +374,11 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
 
 //        auto deletionStart = std::chrono::high_resolution_clock::now();
 
-        for (size_t col = 0; col < _readsSize[readId]; ++col, frontPtr += z, reversePtr += z)
+        size_t shortestCol = _readsSize[readId];
+        for (size_t col = 0; col < shortestCol; ++col)
         {
-            __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr));
-            __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
+            __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr + col * z));
+            __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr + col * z));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
             _maxVal = mm256_max_epi64(_maxVal, sum);
         }
@@ -375,11 +388,11 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
 
         // Deal with various reads' length
         // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-        __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + readId));
-        for (size_t col = _readsSize[readId]; col < y; ++col, frontPtr += z, reversePtr += z)
+        __m256i _cols = _mm256_load_si256((__m256i*)(_readsSize + readId));
+        for (size_t col = shortestCol; col < y; ++col)
         {
-            __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr));
-            __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
+            __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr + col * z));
+            __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr + col * z));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
 
             __m256i _preMaxVal = _maxVal;
@@ -390,6 +403,7 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
         }
 
         alignas(32) AlnScoreType scores[batchSize];
+//        AlnScoreType scores[batchSize] __attribute((aligned(64)));
         _mm256_store_si256((__m256i*)scores, _maxVal);
 
         for(size_t b = 0; b < batchSize; b++)
@@ -469,21 +483,21 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         const AlnScoreType* reversePtr = reverseScores.data() + reverseIndex;
         const AlnScoreType* subPtr = subsScores.data() + subIndex;
 
-        __m256i _cols = _mm256_loadu_si256((__m256i*)(_readsSize + readId));
+        __m256i _cols = _mm256_load_si256((__m256i*)(_readsSize + readId));
         __m256i _one = _mm256_set1_epi64x(-1);
         _cols = _mm256_add_epi64(_cols, _one);
 
-        __m256i forwardScore = _mm256_loadu_si256((__m256i*)(frontPtr));
-        __m256i reverseScore = _mm256_loadu_si256((__m256i*)(reversePtr));
+        __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr));
+        __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr));
         __m256i _maxVal = _mm256_add_epi64(forwardScore, reverseScore);
         _maxVal = _mm256_add_epi64(_maxVal, _baseScoreWithGap);
 
-        for (size_t col = 0; col < _readsSize[readId]; ++col, subPtr += z, frontPtr += z, reversePtr += z)
+        for (size_t col = 0; col < _readsSize[readId]; ++col)
         {
-            __m256i subScore = _mm256_loadu_si256((__m256i*)(subPtr));
-            __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr));
-            __m256i forwardScoreNext = _mm256_loadu_si256((__m256i*)(frontPtr + z));
-            __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reversePtr + z));
+            __m256i subScore = _mm256_load_si256((__m256i*)(subPtr + col * z));
+            __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr + col * z));
+            __m256i forwardScoreNext = _mm256_load_si256((__m256i*)(frontPtr + (col + 1) * z));
+            __m256i reverseScoreNext = _mm256_load_si256((__m256i*)(reversePtr + (col + 1) * z));
 
             __m256i matchScore = _mm256_add_epi64(forwardScoreCurrent, subScore);
             __m256i insertScore = _mm256_add_epi64(forwardScoreNext, _baseScoreWithGap);
@@ -494,12 +508,12 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
 
         // Deal with various reads' length
         // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-        for (size_t col = _readsSize[readId]; col < y - 1; ++col, subPtr += z, frontPtr += z, reversePtr += z)
+        for (size_t col = _readsSize[readId]; col < y - 1; ++col)
         {
-            __m256i subScore = _mm256_loadu_si256((__m256i*)(subPtr));
-            __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr));
-            __m256i forwardScoreNext = _mm256_loadu_si256((__m256i*)(frontPtr + z));
-            __m256i reverseScoreNext = _mm256_loadu_si256((__m256i*)(reversePtr + z));
+            __m256i subScore = _mm256_load_si256((__m256i*)(subPtr + col * z));
+            __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr + col * z));
+            __m256i forwardScoreNext = _mm256_load_si256((__m256i*)(frontPtr + (col + 1) * z));
+            __m256i reverseScoreNext = _mm256_load_si256((__m256i*)(reversePtr + (col + 1) * z));
 
             __m256i matchScore = _mm256_add_epi64(forwardScoreCurrent, subScore);
             __m256i insertScore = _mm256_add_epi64(forwardScoreNext, _baseScoreWithGap);
@@ -514,6 +528,7 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         }
 
         alignas(32) AlnScoreType scores[batchSize];
+//        AlnScoreType scores[batchSize] __attribute((aligned(64)));
         _mm256_store_si256((__m256i*)scores, _maxVal);
 
         for(size_t b = 0; b < batchSize; b++)

@@ -174,17 +174,16 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     auto alignmentStart = std::chrono::high_resolution_clock::now();
 
     AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum);
+//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, memoryPool);
+//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, alignmentDuration);
+//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, memoryPool, alignmentDuration);
+
     stepResult.score = score;
     stepResult.sequence = candidate;
     alignmentNum++;
 
     auto alignmentEnd = std::chrono::high_resolution_clock::now();
     alignmentDuration += alignmentEnd - alignmentStart;
-
-//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, memoryPool, alignmentDuration);
-//    stepResult.score = score;
-//    stepResult.sequence = candidate;
-//    alignmentNum++;
 
     //Deletion
     auto deletionStart = std::chrono::high_resolution_clock::now();

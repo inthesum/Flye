@@ -12,10 +12,10 @@
 #include <memory>
 #include <chrono>
 
-#include "../common/matrix.h"
-#include "../common/matrix3d.h"
+#include "score_matrix.h"
+#include "score_matrix3d.h"
 #include "subs_matrix.h"
-#include "memory_pool.h"
+#include "score_memory_pool.h"
 
 
 class AlignmentAVX {
@@ -24,17 +24,17 @@ public:
     AlignmentAVX(size_t size, const SubstitutionMatrix &sm, const std::vector <std::string> &reads);
     ~AlignmentAVX();
 
-    typedef Matrix<AlnScoreType> ScoreMatrix;
-    typedef Matrix3d<AlnScoreType> ScoreMatrix3d;
-    typedef MemoryPool<AlnScoreType> ScoreMemoryPool;
-
     AlnScoreType globalAlignmentAVX(const std::string &consensus,
                                     const std::vector <std::string> &reads,
                                     const size_t readsNum);
 //    AlnScoreType globalAlignmentAVX(const std::string &consensus,
 //                                    const std::vector <std::string> &reads,
 //                                    const size_t readsNum,
-//                                    ScoreMemoryPool& memoryPool,
+//                                    ScoreMemoryPool& memoryPool);
+//    AlnScoreType globalAlignmentAVX(const std::string &consensus,
+//                                    const std::vector <std::string> &reads,
+//                                    const size_t readsNum,
+////                                    ScoreMemoryPool& memoryPool,
 //                                    std::chrono::duration<double>& alignmentDuration);
 
     AlnScoreType addDeletionAVX(unsigned int letterIndex,
