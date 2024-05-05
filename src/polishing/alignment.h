@@ -11,16 +11,13 @@
 #include <stdexcept>
 #include <chrono>
 
-#include "../common/matrix.h"
-#include "subs_matrix.h"
+#include "score_matrix.h"
 
 
 class Alignment {
 
 public:
     Alignment(size_t size, const SubstitutionMatrix &sm);
-
-    typedef Matrix<AlnScoreType> ScoreMatrix;
 
     AlnScoreType globalAlignment(const std::string &consensus,
                                  const std::vector <std::string> &reads);

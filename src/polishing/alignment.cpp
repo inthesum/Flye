@@ -22,11 +22,13 @@ AlnScoreType Alignment::globalAlignment(const std::string& consensus,
         unsigned int x = consensus.size() + 1;
         unsigned int y = reads[readId].size() + 1;
 
-        ScoreMatrix scoreMat(x, y, 0);
+        ScoreMatrix scoreMat(x, y);
+        scoreMat.at(0, 0) = 0;
         AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
         _forwardScores[readId] = std::move(scoreMat);
 
-        ScoreMatrix scoreMatRev(x, y, 0);
+        ScoreMatrix scoreMatRev(x, y);
+        scoreMatRev.at(x - 1, y - 1) = 0;
         this->getRevScoringMatrix(consensus, reads[readId], scoreMatRev);
         _reverseScores[readId] = std::move(scoreMatRev);
 
@@ -46,7 +48,8 @@ AlnScoreType Alignment::globalAlignment(const std::string &consensus,
         unsigned int x = consensus.size() + 1;
         unsigned int y = reads[readId].size() + 1;
 
-        ScoreMatrix scoreMat(x, y, 0);
+        ScoreMatrix scoreMat(x, y);
+        scoreMat.at(0, 0) = 0;
 
         auto alignmentStart = std::chrono::high_resolution_clock::now();
 
@@ -57,7 +60,8 @@ AlnScoreType Alignment::globalAlignment(const std::string &consensus,
         alignmentDuration += alignmentEnd - alignmentStart;
 
 
-        ScoreMatrix scoreMatRev(x, y, 0);
+        ScoreMatrix scoreMatRev(x, y);
+        scoreMatRev.at(x - 1, y - 1) = 0;
 
         alignmentStart = std::chrono::high_resolution_clock::now();
 
