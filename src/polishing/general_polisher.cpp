@@ -3,7 +3,6 @@
 //Released under the BSD license (see LICENSE file)
 
 #include "general_polisher.h"
-#include "alignment_avx.h"
 
 constexpr size_t batchSize = 4;
 

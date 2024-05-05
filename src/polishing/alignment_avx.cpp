@@ -50,10 +50,7 @@ AlignmentAVX::~AlignmentAVX() {
 
 
 __m256i mm256_max_epi64(__m256i a, __m256i b) {
-    // Compare a and b to get a mask of elements where a > b
     __m256i cmp_mask = _mm256_cmpgt_epi64(a, b);
-
-    // Use the mask to select the maximum value from a and b
     __m256i result = _mm256_blendv_epi8(b, a, cmp_mask);
 
     return result;
@@ -395,11 +392,10 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
             __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr + col * z));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
 
-            __m256i _preMaxVal = _maxVal;
-            _maxVal = mm256_max_epi64(_maxVal, sum);
             __m256i _col = _mm256_set1_epi64x(col);
             __m256i cmp_mask = _mm256_cmpgt_epi64(_col, _cols);
-            _maxVal = _mm256_blendv_epi8(_maxVal, _preMaxVal, cmp_mask);
+            sum = _mm256_blendv_epi8(sum, _maxVal, cmp_mask);
+            _maxVal = mm256_max_epi64(_maxVal, sum);
         }
 
         alignas(32) AlnScoreType scores[batchSize];
@@ -487,8 +483,8 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         __m256i _one = _mm256_set1_epi64x(-1);
         _cols = _mm256_add_epi64(_cols, _one);
 
-        __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr));
-        __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr));
+        __m256i forwardScore = _mm256_load_si256((__m256i*) frontPtr);
+        __m256i reverseScore = _mm256_load_si256((__m256i*) reversePtr);
         __m256i _maxVal = _mm256_add_epi64(forwardScore, reverseScore);
         _maxVal = _mm256_add_epi64(_maxVal, _baseScoreWithGap);
 
@@ -520,11 +516,10 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
             __m256i tempMaxScore = mm256_max_epi64(matchScore, insertScore);
             __m256i sum = _mm256_add_epi64(reverseScoreNext, tempMaxScore);
 
-            __m256i _preMaxVal = _maxVal;
-            _maxVal = mm256_max_epi64(_maxVal, sum);
             __m256i _col = _mm256_set1_epi64x(col);
             __m256i cmp_mask = _mm256_cmpgt_epi64(_col, _cols);
-            _maxVal = _mm256_blendv_epi8(_maxVal, _preMaxVal, cmp_mask);
+            sum = _mm256_blendv_epi8(sum, _maxVal, cmp_mask);
+            _maxVal = mm256_max_epi64(_maxVal, sum);
         }
 
         alignas(32) AlnScoreType scores[batchSize];
