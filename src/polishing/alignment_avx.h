@@ -65,5 +65,6 @@ private:
     std::vector<ScoreMatrix> _subsScoresC;
     std::vector<ScoreMatrix> _subsScoresG;
     std::vector<ScoreMatrix> _subsScoresT;
+    std::vector<ScoreMatrix> _subsScores_;
 };
 

@@ -13,7 +13,8 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
     _subsScoresA(size/batchSize),
     _subsScoresC(size/batchSize),
     _subsScoresG(size/batchSize),
-    _subsScoresT(size/batchSize)
+    _subsScoresT(size/batchSize),
+    _subsScores_(size/batchSize)
 {
     const size_t extendedReads = reads.size();
     _readsSize = (AlnScoreType*)_mm_malloc(extendedReads * sizeof(AlnScoreType), 32);
@@ -26,6 +27,7 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
         ScoreMatrix subsScoresC(x, y);
         ScoreMatrix subsScoresG(x, y);
         ScoreMatrix subsScoresT(x, y);
+        ScoreMatrix subsScores_(x, y);
 
         for(size_t b = 0; b < batchSize; b++) {
             const std::string w = reads[readId + b];
@@ -34,6 +36,7 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
                 subsScoresC.at(i, b) = _subsMatrix.getScore('C', w[i]);
                 subsScoresG.at(i, b) = _subsMatrix.getScore('G', w[i]);
                 subsScoresT.at(i, b) = _subsMatrix.getScore('T', w[i]);
+                subsScores_.at(i, b) = _subsMatrix.getScore('-', w[i]);
             }
         }
 
@@ -41,6 +44,7 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
         _subsScoresC[readId/batchSize] = std::move(subsScoresC);
         _subsScoresG[readId/batchSize] = std::move(subsScoresG);
         _subsScoresT[readId/batchSize] = std::move(subsScoresT);
+        _subsScores_[readId/batchSize] = std::move(subsScores_);
     }
 }
 
@@ -84,11 +88,11 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
 //        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
-        ScoreMatrix leftSubsMatrix(y - 1, z);
-        ScoreMatrix crossSubsMatrixA(y - 1, z);
-        ScoreMatrix crossSubsMatrixC(y - 1, z);
-        ScoreMatrix crossSubsMatrixG(y - 1, z);
-        ScoreMatrix crossSubsMatrixT(y - 1, z);
+        const ScoreMatrix& leftSubsMatrix = _subsScores_[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixA = _subsScoresA[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixC = _subsScoresC[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixG = _subsScoresG[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixT = _subsScoresT[readId/batchSize];
 
         const std::string v = consensus;
 
@@ -99,20 +103,10 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             scoreMatrix.at(0, 0, b) = 0;
 
             for (size_t i = 0; i < v.size(); i++)
-            {
-                AlnScoreType s = _subsMatrix.getScore(v[i], '-');
-                scoreMatrix.at(i+1, 0, b) = scoreMatrix.at(i, 0, b) + s;
-            }
+                scoreMatrix.at(i+1, 0, b) = scoreMatrix.at(i, 0, b) + _subsMatrix.getScore(v[i], '-');
 
-            for (size_t i = 0; i < w.size(); i++) {
-                AlnScoreType s = _subsMatrix.getScore('-', w[i]);
-                leftSubsMatrix.at(i, b) = s;
-                scoreMatrix.at(0, i+1, b) = scoreMatrix.at(0, i, b) + s;
-                crossSubsMatrixA.at(i, b) = _subsMatrix.getScore('A', w[i]);
-                crossSubsMatrixC.at(i, b) = _subsMatrix.getScore('C', w[i]);
-                crossSubsMatrixG.at(i, b) = _subsMatrix.getScore('G', w[i]);
-                crossSubsMatrixT.at(i, b) = _subsMatrix.getScore('T', w[i]);
-            }
+            for (size_t i = 0; i < w.size(); i++)
+                scoreMatrix.at(0, i+1, b) = scoreMatrix.at(0, i, b) + _subsMatrix.getScore('-', w[i]);
         }
 
         size_t leftScoreIndex = 1 * y * z;
@@ -198,7 +192,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
-        alignas(64) AlnScoreType scores[batchSize];
+        alignas(32) AlnScoreType scores[batchSize];
 //        AlnScoreType scores[batchSize] __attribute((aligned(64)));
         _mm256_store_si256((__m256i*)scores, score);
 
@@ -221,11 +215,11 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
 //        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
-        ScoreMatrix leftSubsMatrix(y - 1, z);
-        ScoreMatrix crossSubsMatrixA(y - 1, z);
-        ScoreMatrix crossSubsMatrixC(y - 1, z);
-        ScoreMatrix crossSubsMatrixG(y - 1, z);
-        ScoreMatrix crossSubsMatrixT(y - 1, z);
+        const ScoreMatrix& leftSubsMatrix = _subsScores_[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixA = _subsScoresA[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixC = _subsScoresC[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixG = _subsScoresG[readId/batchSize];
+        const ScoreMatrix& crossSubsMatrixT = _subsScoresT[readId/batchSize];
 
         const std::string v = consensus;
 
@@ -235,20 +229,10 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             scoreMatrix.at(v.size(), w.size(), b) = 0;
 
             for (int i = v.size() - 1; i >= 0; i--)
-            {
-                AlnScoreType s = _subsMatrix.getScore(v[i], '-');
-                scoreMatrix.at(i, w.size(), b) = scoreMatrix.at(i + 1, w.size(), b) + s;
-            }
+                scoreMatrix.at(i, w.size(), b) = scoreMatrix.at(i + 1, w.size(), b) + _subsMatrix.getScore(v[i], '-');
 
-            for (int i = w.size() - 1; i >= 0 ; i--) {
-                AlnScoreType s = _subsMatrix.getScore('-', w[i]);
-                leftSubsMatrix.at(i, b) = s;
-                scoreMatrix.at(v.size(), i, b) = scoreMatrix.at(v.size(), i + 1, b) + s;
-                crossSubsMatrixA.at(i, b) = _subsMatrix.getScore('A', w[i]);
-                crossSubsMatrixC.at(i, b) = _subsMatrix.getScore('C', w[i]);
-                crossSubsMatrixG.at(i, b) = _subsMatrix.getScore('G', w[i]);
-                crossSubsMatrixT.at(i, b) = _subsMatrix.getScore('T', w[i]);
-            }
+            for (int i = w.size() - 1; i >= 0 ; i--)
+                scoreMatrix.at(v.size(), i, b) = scoreMatrix.at(v.size(), i + 1, b) + _subsMatrix.getScore('-', w[i]);
         }
 
         size_t rightScoreIndex = (x - 2) * y * z + (y - 1) * z; // (v.size() - 1, w.size())
@@ -437,7 +421,7 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
                                  char base, const std::vector <std::string> &reads,
                                  const size_t readsNum) const
 {
-    const std::vector<ScoreMatrix>* _subsScoresPtr = nullptr;
+    const std::vector<ScoreMatrix>* _subsScoresPtr;
     switch (base) {
         case 'A':
             _subsScoresPtr = &_subsScoresA;
