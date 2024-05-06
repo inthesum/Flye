@@ -17,7 +17,7 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
     _subsScores_(size/batchSize)
 {
     const size_t extendedReads = reads.size();
-    _readsSize = (AlnScoreType*)_mm_malloc(extendedReads * sizeof(AlnScoreType), 32);
+    _readsSize = (AlnScoreType*)_mm_malloc(extendedReads * sizeof(AlnScoreType), 64);
 
     for (size_t readId = 0; readId < extendedReads; readId += batchSize)
     {
