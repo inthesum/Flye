@@ -8,10 +8,7 @@
 // you may not get the requested 8-byte alignment, depending on various heuristics.
 // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/align-001.html
 
-#include <cstdlib>
 #include <stdexcept>
-#include <cassert>
-#include <vector>
 
 #include <immintrin.h>
 #include "subs_matrix.h"

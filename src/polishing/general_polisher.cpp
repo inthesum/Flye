@@ -4,7 +4,7 @@
 
 #include "general_polisher.h"
 
-constexpr size_t batchSize = 4;
+constexpr size_t batchSize = 8;
 
 void GeneralPolisher::polishBubble(Bubble& bubble,
                                    int64_t& alignmentNum,

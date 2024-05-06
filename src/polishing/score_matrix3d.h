@@ -1,7 +1,4 @@
-#include <cstdlib>
 #include <stdexcept>
-#include <cassert>
-#include <vector>
 
 #include <immintrin.h>
 #include "subs_matrix.h"
