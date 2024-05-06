@@ -41,7 +41,7 @@ public:
 	{
 		if (!rows || !cols)
 			throw std::runtime_error("Zero ScoreMatrix dimension");
-        _data = (AlnScoreType*)_mm_malloc(rows * cols * sizeof(AlnScoreType), 32);
+        _data = (AlnScoreType*)_mm_malloc(rows * cols * sizeof(AlnScoreType), 64);
 	}
 	~ScoreMatrix()
 	{
