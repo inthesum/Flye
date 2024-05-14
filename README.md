@@ -200,5 +200,3 @@ has already been answered.
 
 If you are reporting a problem, please include the `flye.log` file and provide
 details about your dataset.
-
-In case you prefer personal communication, please contact Mikhail at mikolmogorov@gmail.com.
