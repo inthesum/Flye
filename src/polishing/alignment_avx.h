@@ -21,11 +21,11 @@
 class AlignmentAVX {
 
 public:
-    AlignmentAVX(size_t size, const SubstitutionMatrix &sm, const std::vector <std::string> &reads);
+    AlignmentAVX(size_t size, const SubstitutionMatrix &sm, const std::vector<std::string> &reads);
     ~AlignmentAVX();
 
     AlnScoreType globalAlignmentAVX(const std::string &consensus,
-                                    const std::vector <std::string> &reads,
+                                    const std::vector<std::string> &reads,
                                     const size_t readsNum);
 //    AlnScoreType globalAlignmentAVX(const std::string &consensus,
 //                                    const std::vector <std::string> &reads,
@@ -44,15 +44,15 @@ public:
 //                                std::chrono::duration<double>& deletionDuration) const;
 
     AlnScoreType addSubsAndInsertAVX(size_t frontRow, size_t revRow,
-                                     char base, const std::vector <std::string> &reads,
+                                     char base, const std::vector<std::string> &reads,
                                      const size_t readsNum) const;
 
     AlnScoreType addSubstitutionAVX(unsigned int letterIndex,
-                                    char base, const std::vector <std::string> &reads,
+                                    char base, const std::vector<std::string> &reads,
                                     const size_t readsNum) const;
 
     AlnScoreType addInsertionAVX(unsigned int positionIndex,
-                                 char base, const std::vector <std::string> &reads,
+                                 char base, const std::vector<std::string> &reads,
                                  const size_t readsNum) const;
 
 private:
@@ -66,5 +66,7 @@ private:
     std::vector<ScoreMatrix> _subsScoresG;
     std::vector<ScoreMatrix> _subsScoresT;
     std::vector<ScoreMatrix> _subsScores_;
+
+    const size_t batchNum;
 };
 
