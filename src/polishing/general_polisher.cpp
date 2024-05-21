@@ -92,10 +92,13 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
                                             bubble.branches.begin() + right);
 
         const size_t readsNum = PRE_POLISH;
-        const size_t extendedReadsNum = batchSize - readsNum % batchSize;
-        std::vector<std::string>& extendedReads = reducedSet;
-        std::string lastRead = reducedSet[readsNum - 1];
-        for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
+        size_t extendedReadsNum = 0;
+        std::vector <std::string> &extendedReads = reducedSet;
+        if(readsNum % batchSize != 0) {
+            const size_t extendedReadsNum = batchSize - readsNum % batchSize;
+            std::string lastRead = reducedSet[readsNum - 1];
+            for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
+        }
 
 //        ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
 
@@ -122,10 +125,13 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 
 	//then, polish with all branches
     const size_t readsNum = bubble.branches.size();
-    const size_t extendedReadsNum = batchSize - readsNum % batchSize;
+    size_t extendedReadsNum = 0;
     std::vector<std::string>& extendedReads = bubble.branches;
-    std::string lastRead = bubble.branches[readsNum - 1];
-    for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
+    if(readsNum % batchSize != 0) {
+        extendedReadsNum = batchSize - readsNum % batchSize;
+        std::string lastRead = bubble.branches[readsNum - 1];
+        for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
+    }
 
 //    ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
 
