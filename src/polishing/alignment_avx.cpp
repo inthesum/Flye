@@ -8,19 +8,21 @@ constexpr size_t batchSize = 8; // Use constexpr for batch size
 
 AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std::vector <std::string> &reads):
     _subsMatrix(sm),
-    _forwardScores(size/batchSize),
-    _reverseScores(size/batchSize),
-    _subsScoresA(size/batchSize),
-    _subsScoresC(size/batchSize),
-    _subsScoresG(size/batchSize),
-    _subsScoresT(size/batchSize),
-    _subsScores_(size/batchSize)
+    batchNum(size/batchSize)
 {
-    const size_t extendedReads = reads.size();
-    _readsSize = (AlnScoreType*)_mm_malloc(extendedReads * sizeof(AlnScoreType), 64);
+    _forwardScores.resize(batchNum);
+    _reverseScores.resize(batchNum);
+    _subsScoresA.resize(batchNum);
+    _subsScoresC.resize(batchNum);
+    _subsScoresG.resize(batchNum);
+    _subsScoresT.resize(batchNum);
+    _subsScores_.resize(batchNum);
 
-    for (size_t readId = 0; readId < extendedReads; readId += batchSize)
+    _readsSize = (AlnScoreType*)_mm_malloc(size * sizeof(AlnScoreType), 64);
+
+    for (size_t batchId = 0; batchId < batchNum; batchId++)
     {
+        const size_t readId = batchId * batchSize;
         size_t x = reads[readId + batchSize - 1].size();
         size_t y = batchSize;
         ScoreMatrix subsScoresA(x, y);
@@ -40,11 +42,11 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
             }
         }
 
-        _subsScoresA[readId/batchSize] = std::move(subsScoresA);
-        _subsScoresC[readId/batchSize] = std::move(subsScoresC);
-        _subsScoresG[readId/batchSize] = std::move(subsScoresG);
-        _subsScoresT[readId/batchSize] = std::move(subsScoresT);
-        _subsScores_[readId/batchSize] = std::move(subsScores_);
+        _subsScoresA[batchId] = std::move(subsScoresA);
+        _subsScoresC[batchId] = std::move(subsScoresC);
+        _subsScoresG[batchId] = std::move(subsScoresG);
+        _subsScoresT[batchId] = std::move(subsScoresT);
+        _subsScores_[batchId] = std::move(subsScores_);
     }
 }
 
@@ -67,11 +69,11 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //                                              std::chrono::duration<double>& alignmentDuration)
 {
     AlnScoreType finalScore = 0;
-    const size_t extendedReads = reads.size();
 
     // getScoringMatrix
-    for (size_t readId = 0; readId < extendedReads; readId += batchSize)
+    for (size_t batchId = 0; batchId < batchNum; batchId++)
     {
+        const size_t readId = batchId * batchSize;
         size_t x = consensus.size() + 1;
         size_t y = reads[readId + batchSize - 1].size() + 1;
         size_t z = batchSize;
@@ -80,11 +82,11 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
 //        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
-        const ScoreMatrix& leftSubsMatrix = _subsScores_[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixA = _subsScoresA[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixC = _subsScoresC[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixG = _subsScoresG[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixT = _subsScoresT[readId/batchSize];
+        const ScoreMatrix& leftSubsMatrix = _subsScores_[batchId];
+        const ScoreMatrix& crossSubsMatrixA = _subsScoresA[batchId];
+        const ScoreMatrix& crossSubsMatrixC = _subsScoresC[batchId];
+        const ScoreMatrix& crossSubsMatrixG = _subsScoresG[batchId];
+        const ScoreMatrix& crossSubsMatrixT = _subsScoresT[batchId];
 
         const std::string v = consensus;
 
@@ -133,8 +135,8 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             const ScoreMatrix& crossSubsMatrix = *crossSubsMatrixPtr;
 
 //            auto alignmentStart = std::chrono::high_resolution_clock::now();
-
-            for (size_t j = 1; j < _readsSize[readId]; j++, leftScoreIndex += z, crossScoreIndex += z,
+            const size_t shortestCol = _readsSize[readId];
+            for (size_t j = 1; j < shortestCol; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
                 __m512i leftScore = _mm512_load_si512((__m512i*)(scoreMatrix.data() + leftScoreIndex));
@@ -156,7 +158,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-            for (size_t j = _readsSize[readId]; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
+            for (size_t j = shortestCol; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
                 __m512i leftScore = _mm512_load_si512((__m512i*)(scoreMatrix.data() + leftScoreIndex));
@@ -188,7 +190,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //        AlnScoreType scores[batchSize] __attribute((aligned(64)));
         _mm512_store_si512((__m512i*)scores, score);
 
-        _forwardScores[readId / batchSize] = std::move(scoreMatrix);
+        _forwardScores[batchId] = std::move(scoreMatrix);
 
         for(size_t b = 0; b < batchSize; b++)
             if((readId + b) < readsNum)
@@ -197,8 +199,9 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 
 
     // getRevScoringMatrix
-    for (size_t readId = 0; readId < extendedReads; readId += batchSize)
+    for (size_t batchId = 0; batchId < batchNum; batchId++)
     {
+        const size_t readId = batchId * batchSize;
         size_t x = consensus.size() + 1;
         size_t y = reads[readId+batchSize-1].size() + 1;
         size_t z = batchSize;
@@ -207,11 +210,11 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
 //        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
-        const ScoreMatrix& leftSubsMatrix = _subsScores_[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixA = _subsScoresA[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixC = _subsScoresC[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixG = _subsScoresG[readId/batchSize];
-        const ScoreMatrix& crossSubsMatrixT = _subsScoresT[readId/batchSize];
+        const ScoreMatrix& leftSubsMatrix = _subsScores_[batchId];
+        const ScoreMatrix& crossSubsMatrixA = _subsScoresA[batchId];
+        const ScoreMatrix& crossSubsMatrixC = _subsScoresC[batchId];
+        const ScoreMatrix& crossSubsMatrixG = _subsScoresG[batchId];
+        const ScoreMatrix& crossSubsMatrixT = _subsScoresT[batchId];
 
         const std::string v = consensus;
 
@@ -263,7 +266,8 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-            for (size_t j = y - 1; j >= _readsSize[readId]; j--, rightScoreIndex -= z, crossScoreIndex -= z,
+            const size_t shortestCol = _readsSize[readId];
+            for (size_t j = y - 1; j >= shortestCol; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
                 __m512i rightScore = _mm512_load_si512((__m512i*)(scoreMatrix.data() + rightScoreIndex));
@@ -287,7 +291,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
                 _mm512_store_si512((__m512i*)(scoreMatrix.data() + rightScoreIndex - z), score);
             }
 
-            for (size_t j = _readsSize[readId] - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
+            for (size_t j = shortestCol - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
                 __m512i rightScore = _mm512_load_si512((__m512i*)(scoreMatrix.data() + rightScoreIndex));
@@ -311,7 +315,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 //            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
-        _reverseScores[readId / batchSize] = std::move(scoreMatrix);
+        _reverseScores[batchId] = std::move(scoreMatrix);
     }
 
     return finalScore;
@@ -323,16 +327,15 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
 //                                          const size_t readsNum,
 //                                          std::chrono::duration<double>& deletionDuration) const
 {
-    const size_t extendedReadsNum = _forwardScores.size() * batchSize;
-
     size_t frontRow = letterIndex - 1;
     size_t revRow = letterIndex;
 
     AlnScoreType finalScore = 0;
 
-    for (size_t readId = 0; readId < extendedReadsNum; readId += batchSize) {
-        const ScoreMatrix3d& forwardScores = _forwardScores[readId / batchSize];
-        const ScoreMatrix3d& reverseScores = _reverseScores[readId / batchSize];
+    for (size_t batchId = 0; batchId < batchNum; batchId++) {
+        const size_t readId = batchId * batchSize;
+        const ScoreMatrix3d& forwardScores = _forwardScores[batchId];
+        const ScoreMatrix3d& reverseScores = _reverseScores[batchId];
 
         size_t y = forwardScores.ncols();
         size_t z = batchSize;
@@ -347,7 +350,7 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
 
 //        auto deletionStart = std::chrono::high_resolution_clock::now();
 
-        size_t shortestCol = _readsSize[readId];
+        const size_t shortestCol = _readsSize[readId];
         for (size_t col = 0; col < shortestCol; ++col)
         {
             __m512i forwardScore = _mm512_load_si512((__m512i*)(frontPtr + col * z));
@@ -433,17 +436,17 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
     }
     const std::vector<ScoreMatrix>& _subsScores = *_subsScoresPtr;
 
-    const size_t extendedReadsNum = reads.size();
-
     AlnScoreType finalScore = 0;
 
     AlnScoreType baseScoreWithGap = _subsMatrix.getScore(base, '-');
     __m512i _baseScoreWithGap = _mm512_set1_epi64(baseScoreWithGap);
 
-    for (size_t readId = 0; readId < extendedReadsNum; readId += batchSize) {
-        const ScoreMatrix3d& forwardScores = _forwardScores[readId / batchSize];
-        const ScoreMatrix3d& reverseScores = _reverseScores[readId / batchSize];
-        const ScoreMatrix& subsScores = _subsScores[readId / batchSize];
+    const size_t batchNum = reads.size() / batchSize;
+    for (size_t batchId = 0; batchId < batchNum; batchId++) {
+        const size_t readId = batchId * batchSize;
+        const ScoreMatrix3d& forwardScores = _forwardScores[batchId];
+        const ScoreMatrix3d& reverseScores = _reverseScores[batchId];
+        const ScoreMatrix& subsScores = _subsScores[batchId];
 
         size_t y = forwardScores.ncols();
         size_t z = batchSize;
@@ -464,7 +467,8 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         __m512i _maxVal = _mm512_add_epi64(forwardScore, reverseScore);
         _maxVal = _mm512_add_epi64(_maxVal, _baseScoreWithGap);
 
-        for (size_t col = 0; col < _readsSize[readId]; ++col)
+        const size_t shortestCol = _readsSize[readId];
+        for (size_t col = 0; col < shortestCol; ++col)
         {
             __m512i subScore = _mm512_load_si512((__m512i*)(subPtr + col * z));
             __m512i forwardScoreCurrent = _mm512_load_si512((__m512i*)(frontPtr + col * z));
@@ -480,7 +484,7 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
 
         // Deal with various reads' length
         // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
-        for (size_t col = _readsSize[readId]; col < y - 1; ++col)
+        for (size_t col = shortestCol; col < y - 1; ++col)
         {
             __m512i subScore = _mm512_load_si512((__m512i*)(subPtr + col * z));
             __m512i forwardScoreCurrent = _mm512_load_si512((__m512i*)(frontPtr + col * z));
