@@ -205,21 +205,54 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
 
 def _output_bubbles(bubbles, out_stream):
     """
-    Outputs list of bubbles into file using batch writing
+    Outputs list of bubbles into file using batch writing,
+    flushing every 1000 bubbles
     """
     buffer = []
+    bubble_count = 0
+    flush_threshold = 1000
+
     for bubble in bubbles:
         if not bubble.branches:
             raise Exception("No branches in a bubble")
+
         buffer.append(f">{bubble.contig_id} {bubble.position} {len(bubble.branches)} {bubble.sub_position}\n")
         buffer.append(f"{bubble.consensus}\n")
         for branch_id, branch in enumerate(bubble.branches):
             buffer.append(f">{branch_id}\n{branch}\n")
 
+        bubble_count += 1
+
+        # Check if we've reached the flush threshold
+        if bubble_count >= flush_threshold:
+            out_stream.writelines(buffer)
+            buffer = []  # Clear the buffer
+            bubble_count = 0  # Reset the counter
+
+    # Write any remaining data in the buffer
     if buffer:
         out_stream.writelines(buffer)
 
     out_stream.flush()
+
+
+# def _output_bubbles(bubbles, out_stream):
+#     """
+#     Outputs list of bubbles into file using batch writing
+#     """
+#     buffer = []
+#     for bubble in bubbles:
+#         if not bubble.branches:
+#             raise Exception("No branches in a bubble")
+#         buffer.append(f">{bubble.contig_id} {bubble.position} {len(bubble.branches)} {bubble.sub_position}\n")
+#         buffer.append(f"{bubble.consensus}\n")
+#         for branch_id, branch in enumerate(bubble.branches):
+#             buffer.append(f">{branch_id}\n{branch}\n")
+#
+#     if buffer:
+#         out_stream.writelines(buffer)
+#
+#     out_stream.flush()
 
 
 # def _output_bubbles(bubbles, out_stream):
