@@ -22,7 +22,8 @@ namespace
 
 BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
                                  const std::string& hopoMatrixPath,
-                                 bool showProgress, bool hopoEnabled):
+                                 bool showProgress, bool hopoEnabled,
+                                 int numThreads):
         _subsMatrix(subsMatPath),
         _hopoMatrix(hopoMatrixPath),
         _generalPolisher(_subsMatrix),
@@ -30,7 +31,8 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
         _dinucFixer(_subsMatrix),
         _verbose(false),
         _showProgress(showProgress),
-        _hopoEnabled(hopoEnabled)
+        _hopoEnabled(hopoEnabled),
+        _numThreads(numThreads)
 {
 //    static char alphabet[] = {'A', 'C', 'G', 'T', '-'};
 //
@@ -43,8 +45,7 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
 
 
 void BubbleProcessor::polishAll(const std::string& inBubbles,
-                                const std::string& outConsensus,
-                                int numThreads)
+                                const std::string& outConsensus)
 {
     size_t fileLength = fileSize(inBubbles);
     if (!fileLength)
@@ -59,7 +60,7 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 
     _progress.setFinalCount(fileLength);
 
-    std::vector<std::thread> threads(numThreads);
+    std::vector<std::thread> threads(_numThreads);
     for (size_t i = 0; i < threads.size(); ++i)
     {
         std::string filename = outConsensus;
@@ -109,11 +110,10 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     std::chrono::duration<double> substitutionDuration(0);
 
     const int MAX_BUBBLE = 5000;
-    const int BATCH_SIZE = 10;
     int numBubbles = 0;
     int numBubblesPolished = 0;
     int counter = 0;
-    std::queue<Bubble> bubbles;
+    std::queue<std::unique_ptr<Bubble>> bubbles;
     std::ostringstream bufferedBubbles;
 
     auto startWaiting = std::chrono::high_resolution_clock::now();
@@ -126,7 +126,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
         if (_preprocessBubbles.empty())
         {
             auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
-            this->cacheBubbles(BATCH_SIZE * 100);
+            this->cacheBubbles(_batchSize * _numThreads);
             auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
             cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
 
@@ -170,9 +170,8 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
             }
         }
 
-        for(int i=0; i<BATCH_SIZE && !_preprocessBubbles.empty(); i++) {
-            Bubble bubble = _preprocessBubbles.front();
-            bubbles.push(bubble);
+        for(int i=0; i<_batchSize && !_preprocessBubbles.empty(); i++) {
+            bubbles.push(std::move(_preprocessBubbles.front()));
             _preprocessBubbles.pop();
             numBubbles++;
             counter++;
@@ -181,18 +180,18 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
         _readMutex.unlock();
 
         while(!bubbles.empty()) {
-            Bubble bubble = bubbles.front();
+            std::unique_ptr<Bubble> bubble = std::move(bubbles.front());
             bubbles.pop();
 
-            if (bubble.candidate.size() < MAX_BUBBLE &&
-                bubble.branches.size() > 1)
+            if (bubble->candidate.size() < MAX_BUBBLE &&
+                bubble->branches.size() > 1)
             {
                 numBubblesPolished++;
 
                 auto generalPolisherStart = std::chrono::high_resolution_clock::now();
 //                _generalPolisher.polishBubble(bubble);
 
-                _generalPolisher.polishBubble(bubble,
+                _generalPolisher.polishBubble(*bubble,
                                               alignmentNum,
                                               deletionNum,
                                               insertionNum,
@@ -209,26 +208,26 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 auto homoPolisherStart = std::chrono::high_resolution_clock::now();
                 if (_hopoEnabled)
                 {
-                    _homoPolisher.polishBubble(bubble);
+                    _homoPolisher.polishBubble(*bubble);
                 }
                 auto homoPolisherEnd = std::chrono::high_resolution_clock::now();
                 homoPolisherDuration += homoPolisherEnd - homoPolisherStart;
 
                 auto fixerStart = std::chrono::high_resolution_clock::now();
-                _dinucFixer.fixBubble(bubble);
+                _dinucFixer.fixBubble(*bubble);
                 auto fixerEnd = std::chrono::high_resolution_clock::now();
                 fixerDuration += fixerEnd - fixerStart;
             }
 
             auto startWriting = std::chrono::high_resolution_clock::now();
-            bufferedBubbles << ">" << bubble.header << " " << bubble.position
-                            << " " << bubble.branches.size() << " " << bubble.subPosition << std::endl
-                            << bubble.candidate << std::endl;
+            bufferedBubbles << ">" << bubble->header << " " << bubble->position
+                            << " " << bubble->branches.size() << " " << bubble->subPosition << std::endl
+                            << bubble->candidate << std::endl;
             auto endWriting = std::chrono::high_resolution_clock::now();
             writeBubblesDuration += endWriting - startWriting;
         }
 
-        if (counter >= BATCH_SIZE * 100) {
+        if (counter >= _batchSize * 100) {
             auto startWriting = std::chrono::high_resolution_clock::now();
             consensusFile << bufferedBubbles.str();
             auto endWriting = std::chrono::high_resolution_clock::now();
@@ -302,7 +301,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
             throw std::runtime_error("Error parsing bubbles file");
         }
 
-        _preprocessBubbles.push(std::move(bubble));
+        _preprocessBubbles.push(std::make_unique<Bubble>(bubble));
         ++readBubbles;
     }
 

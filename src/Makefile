@@ -1,6 +1,6 @@
 .PHONY: all clean debug profile
 
-CXXFLAGS += -Wall -Wextra -pthread -std=c++11 -g
+CXXFLAGS += -Wall -Wextra -pthread -std=c++14 -g
 CXXFLAGS += -Wno-missing-field-initializers
 LDFLAGS += -pthread -std=c++11 -rdynamic
 
