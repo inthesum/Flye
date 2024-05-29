@@ -141,7 +141,7 @@ void BubbleProcessorPro::processThread(const std::string outFile)
             std::cout << "number of bubbles: " << numBubbles << std::endl;
             std::cout << "number of polished bubbles: " << numBubblesPolished << std::endl;
             std::cout << "live: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
-            std::cout << "waiting for read: " << std::fixed << std::setprecision(2) << waitReadDuration.count() << " seconds" << std::endl;
+            std::cout << "wait: " << std::fixed << std::setprecision(2) << waitReadDuration.count() << " seconds" << std::endl;
             std::cout << "write bubbles: " << std::fixed << std::setprecision(2) << writeBubblesDuration.count() << " seconds" << std::endl;
             std::cout << "_generalPolisher: " << std::fixed << std::setprecision(2) << generalPolisherDuration.count() << " seconds" << std::endl;
             std::cout << "_homoPolisher: " << std::fixed << std::setprecision(2) << homoPolisherDuration.count() << " seconds" << std::endl;
@@ -294,6 +294,7 @@ void BubbleProcessorPro::readThread() {
     auto end = std::chrono::high_resolution_clock::now(); // End timer
     duration = end - start;
 
+    std::cout << std::endl;
     std::cout << "thread id: " << std::this_thread::get_id() << std::endl;
     std::cout << "live: " << std::fixed << std::setprecision(2) << duration.count() << " seconds" << std::endl;
     std::cout << "wait: " << std::fixed << std::setprecision(2) << waitDuration.count() << " seconds" << std::endl;
