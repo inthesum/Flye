@@ -2,7 +2,7 @@
 
 CXXFLAGS += -Wall -Wextra -pthread -std=c++14 -g
 CXXFLAGS += -Wno-missing-field-initializers
-LDFLAGS += -pthread -std=c++11 -rdynamic
+LDFLAGS += -pthread -std=c++14 -rdynamic
 
 # Add flags for SIMD support (AVX2)
 CXXFLAGS += -mavx2
