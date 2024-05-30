@@ -62,6 +62,11 @@ void BubbleProcessorPro::polishAll(const std::string& inBubbles,
 
     std::vector<std::thread> threads(_numThreads);
     threads[0] = std::thread(&BubbleProcessorPro::readThread, this);
+
+    std::string filename = outConsensus;
+    size_t dotPos = filename.find('.');
+    filename.insert(dotPos, "_" + std::to_string(0));
+
     for (size_t i = 1; i < threads.size(); ++i)
     {
         std::string filename = outConsensus;
@@ -350,6 +355,8 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
         bubbles.push(std::make_unique<Bubble>(bubble));
         ++readBubbles;
     }
+
+    if(readBubbles != maxRead) _batchSize = readBubbles / (_numThreads - 1) + 1;
 
     int64_t filePos = _bubblesFile.tellg();
     if (_showProgress && filePos > 0)

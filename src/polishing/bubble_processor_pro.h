@@ -52,6 +52,9 @@ private:
     static bool                         _ready_to_process;
     static bool                         _done;
 
+    int                                 _batchSize = 100;
+    const int                           _numThreads;
+
     //    std::queue<Bubble>                  _preprocessBubbles;
     std::queue<std::unique_ptr<Bubble>> _preprocessBubbles;
 
@@ -60,7 +63,4 @@ private:
     bool					            _verbose;
     bool 					            _showProgress;
     bool					            _hopoEnabled;
-
-    const int                           _batchSize = 10;
-    const int                           _numThreads;
 };
