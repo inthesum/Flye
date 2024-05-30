@@ -121,7 +121,7 @@ void BubbleProcessorPro::processThread(const std::string outFile)
     const int MAX_BUBBLE = 5000;
     int numBubbles = 0;
     int numBubblesPolished = 0;
-    int counter = 0;
+//    int counter = 0;
     std::queue<std::unique_ptr<Bubble>> bubbles;
     std::ostringstream bufferedBubbles;
 
@@ -179,7 +179,7 @@ void BubbleProcessorPro::processThread(const std::string outFile)
                 bubbles.push(std::move(_preprocessBubbles.front()));
                 _preprocessBubbles.pop();
                 numBubbles++;
-                counter++;
+//                counter++;
             }
 
             if (_preprocessBubbles.empty() && !_done) {
@@ -370,6 +370,8 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
     }
 
     if(readBubbles != maxRead) {
+        std::cout << std::endl;
+        std::cout << "current batch size: " << _batchSize << std::endl;
         _batchSize = readBubbles / (_numThreads - 1) + 1;
         std::cout << "new batch size: " << _batchSize << std::endl;
     }
