@@ -66,6 +66,12 @@ void BubbleProcessorPro::polishAll(const std::string& inBubbles,
     std::string filename = outConsensus;
     size_t dotPos = filename.find('.');
     filename.insert(dotPos, "_" + std::to_string(0));
+    std::ofstream consensusFile(filename);
+    if (!consensusFile.is_open())
+    {
+        throw std::runtime_error("Error opening output file: " + filename);
+    }
+    consensusFile.close();
 
     for (size_t i = 1; i < threads.size(); ++i)
     {
@@ -268,7 +274,7 @@ void BubbleProcessorPro::readThread() {
     while (!_bubblesFile.eof()) {
         auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
 
-        this->cacheBubbles(bubbles, _batchSize * _numThreads - 1);
+        this->cacheBubbles(bubbles, _batchSize * (_numThreads - 1));
 
         auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
         cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
