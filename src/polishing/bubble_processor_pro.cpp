@@ -136,12 +136,12 @@ void BubbleProcessorPro::processThread(const std::string outFile)
         waitReadDuration += endWaiting - startWaiting;
 
         if (_done && _preprocessBubbles.empty()) {
-            if (counter != 0) {
-                auto startWriting = std::chrono::high_resolution_clock::now();
-                consensusFile << bufferedBubbles.str();
-                auto endWriting = std::chrono::high_resolution_clock::now();
-                writeBubblesDuration += endWriting - startWriting;
-            }
+//            if (counter != 0) {
+//                auto startWriting = std::chrono::high_resolution_clock::now();
+//                consensusFile << bufferedBubbles.str();
+//                auto endWriting = std::chrono::high_resolution_clock::now();
+//                writeBubblesDuration += endWriting - startWriting;
+//            }
 
             consensusFile.close();
 
@@ -238,15 +238,22 @@ void BubbleProcessorPro::processThread(const std::string outFile)
                 writeBubblesDuration += endWriting - startWriting;
             }
 
-            if (counter >= _batchSize * 100) {
-                auto startWriting = std::chrono::high_resolution_clock::now();
-                consensusFile << bufferedBubbles.str();
-                auto endWriting = std::chrono::high_resolution_clock::now();
-                writeBubblesDuration += endWriting - startWriting;
+            auto startWriting = std::chrono::high_resolution_clock::now();
+            consensusFile << bufferedBubbles.str();
+            auto endWriting = std::chrono::high_resolution_clock::now();
+            writeBubblesDuration += endWriting - startWriting;
 
-                counter = 0;
-                bufferedBubbles.str("");
-            }
+            bufferedBubbles.str("");
+
+//            if (counter >= _batchSize * 100) {
+//                auto startWriting = std::chrono::high_resolution_clock::now();
+//                consensusFile << bufferedBubbles.str();
+//                auto endWriting = std::chrono::high_resolution_clock::now();
+//                writeBubblesDuration += endWriting - startWriting;
+//
+//                counter = 0;
+//                bufferedBubbles.str("");
+//            }
         }
     }
 }
@@ -362,7 +369,10 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
         ++readBubbles;
     }
 
-    if(readBubbles != maxRead) _batchSize = readBubbles / (_numThreads - 1) + 1;
+    if(readBubbles != maxRead) {
+        _batchSize = readBubbles / (_numThreads - 1) + 1;
+        std::cout << "new batch size: " << _batchSize << std::endl;
+    }
 
     int64_t filePos = _bubblesFile.tellg();
     if (_showProgress && filePos > 0)
