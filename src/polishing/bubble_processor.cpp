@@ -109,7 +109,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     std::chrono::duration<double> substitutionDuration(0);
 
     const int MAX_BUBBLE = 5000;
-    const int BATCH_SIZE = 10;
+    const int BATCH_SIZE = 20;
     int numBubbles = 0;
     int numBubblesPolished = 0;
     int counter = 0;
