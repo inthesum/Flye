@@ -38,22 +38,22 @@ public:
 //                                    std::chrono::duration<double>& alignmentDuration);
 
     AlnScoreType addDeletionAVX(unsigned int letterIndex,
-                                const size_t readsNum) const;
+                                const size_t readsNum);
 //    AlnScoreType addDeletionAVX(unsigned int letterIndex,
 //                                const size_t readsNum,
 //                                std::chrono::duration<double>& deletionDuration) const;
 
     AlnScoreType addSubsAndInsertAVX(size_t frontRow, size_t revRow,
                                      char base, const std::vector<std::string> &reads,
-                                     const size_t readsNum) const;
+                                     const size_t readsNum);
 
     AlnScoreType addSubstitutionAVX(unsigned int letterIndex,
                                     char base, const std::vector<std::string> &reads,
-                                    const size_t readsNum) const;
+                                    const size_t readsNum);
 
     AlnScoreType addInsertionAVX(unsigned int positionIndex,
                                  char base, const std::vector<std::string> &reads,
-                                 const size_t readsNum) const;
+                                 const size_t readsNum);
 
 private:
     std::vector<ScoreMatrix3d> _forwardScores;
@@ -68,5 +68,12 @@ private:
     std::vector<ScoreMatrix> _subsScores_;
 
     const size_t batchNum;
+
+    __m256i mm256_max_epi64(__m256i a, __m256i b) {
+        __m256i cmp_mask = _mm256_cmpgt_epi64(a, b);
+        __m256i result = _mm256_blendv_epi8(b, a, cmp_mask);
+
+        return result;
+    }
 };
 

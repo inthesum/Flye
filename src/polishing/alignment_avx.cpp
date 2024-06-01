@@ -55,12 +55,7 @@ AlignmentAVX::~AlignmentAVX() {
 }
 
 
-__m256i mm256_max_epi64(__m256i a, __m256i b) {
-    __m256i cmp_mask = _mm256_cmpgt_epi64(a, b);
-    __m256i result = _mm256_blendv_epi8(b, a, cmp_mask);
 
-    return result;
-}
 
 
 AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
@@ -330,7 +325,7 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 }
 
 
-AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t readsNum) const
+AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t readsNum)
 //AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex,
 //                                          const size_t readsNum,
 //                                          std::chrono::duration<double>& deletionDuration) const
@@ -400,7 +395,7 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
 
 AlnScoreType AlignmentAVX::addSubstitutionAVX(unsigned int letterIndex, char base,
                                               const std::vector<std::string>& reads,
-                                              const size_t readsNum) const
+                                              const size_t readsNum)
 {
     size_t frontRow = letterIndex - 1;
     size_t revRow = letterIndex;
@@ -411,7 +406,7 @@ AlnScoreType AlignmentAVX::addSubstitutionAVX(unsigned int letterIndex, char bas
 
 AlnScoreType AlignmentAVX::addInsertionAVX(unsigned int pos, char base,
                                            const std::vector<std::string>& reads,
-                                           const size_t readsNum) const
+                                           const size_t readsNum)
 {
     size_t frontRow = pos - 1;
     size_t revRow = pos - 1;
@@ -422,7 +417,7 @@ AlnScoreType AlignmentAVX::addInsertionAVX(unsigned int pos, char base,
 
 AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
                                  char base, const std::vector <std::string> &reads,
-                                 const size_t readsNum) const
+                                 const size_t readsNum)
 {
     const std::vector<ScoreMatrix>* _subsScoresPtr;
     switch (base) {
