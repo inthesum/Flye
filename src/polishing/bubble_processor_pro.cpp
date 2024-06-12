@@ -294,10 +294,12 @@ void BubbleProcessorPro::readThread() {
         auto waitEnd = std::chrono::high_resolution_clock::now();
         waitDuration += waitEnd - waitStart;
 
-        while (!bubbles.empty()) {
-            _preprocessBubbles.push(std::move(bubbles.front()));
-            bubbles.pop();
-        }
+//        while (!bubbles.empty()) {
+//            _preprocessBubbles.push(std::move(bubbles.front()));
+//            bubbles.pop();
+//        }
+
+        std::swap(bubbles, _preprocessBubbles);
 
         _ready_to_read = false;
         _ready_to_process = true;
