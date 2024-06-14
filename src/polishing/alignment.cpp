@@ -23,8 +23,8 @@ AlnScoreType Alignment::globalAlignment(const std::string& consensus,
 		unsigned int x = consensus.size() + 1;
 		unsigned int y = reads[readId].size() + 1;
 		ScoreMatrix scoreMat(x, y, 0);
-			
-		AlnScoreType score = this->getScoringMatrix(consensus, reads[readId], 
+
+		AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],
 													  scoreMat);
 		_forwardScores[readId] = std::move(scoreMat);
 
@@ -54,12 +54,12 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 		//unsigned int index = (reverseScore.nrows() - 1) - letterIndex;
 		size_t frontRow = letterIndex - 1;
 		size_t revRow = reverseScore.nrows() - 1 - letterIndex;
-		
+
 		AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
 		for (size_t col = 0; col < forwardScore.ncols(); ++col)
 		{
 			size_t backCol = forwardScore.ncols() - col - 1;
-			AlnScoreType sum = forwardScore.at(frontRow, col) + 
+			AlnScoreType sum = forwardScore.at(frontRow, col) +
 							reverseScore.at(revRow, backCol);
 			maxVal = std::max(maxVal, sum);
 		}
@@ -69,11 +69,11 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 }
 
 
-//AlnScoreType Alignment::addSubstitution(unsigned int wordIndex, 
+//AlnScoreType Alignment::addSubstitution(unsigned int wordIndex,
 //							   			unsigned int letterIndex,
-//							   			char base, const std::string& read) 
+//							   			char base, const std::string& read)
 
-AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base, 
+AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 										const std::vector<std::string>& reads) const
 {
 	AlnScoreType finalScore = 0;
@@ -90,9 +90,9 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 		sub[0] = forwardScore.at(frontRow, 0) + _subsMatrix.getScore(base, '-');
 		for (size_t i = 0; i < reads[readId].size(); ++i)
 		{
-			AlnScoreType match = forwardScore.at(frontRow, i) + 
+			AlnScoreType match = forwardScore.at(frontRow, i) +
 							_subsMatrix.getScore(base, reads[readId][i]);
-			AlnScoreType ins = forwardScore.at(frontRow, i + 1) + 
+			AlnScoreType ins = forwardScore.at(frontRow, i + 1) +
 							_subsMatrix.getScore(base, '-');
 			sub[i + 1] = std::max(match, ins);
 		}
@@ -110,7 +110,7 @@ AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 }
 
 
-AlnScoreType Alignment::addInsertion(unsigned int pos, char base, 
+AlnScoreType Alignment::addInsertion(unsigned int pos, char base,
 									 const std::vector<std::string>& reads) const
 {
 	AlnScoreType finalScore = 0;
@@ -127,9 +127,9 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base,
 		sub[0] = forwardScore.at(frontRow, 0) + _subsMatrix.getScore(base, '-');
 		for (size_t i = 0; i < reads[readId].size(); ++i)
 		{
-			AlnScoreType match = forwardScore.at(frontRow, i) + 
+			AlnScoreType match = forwardScore.at(frontRow, i) +
 							_subsMatrix.getScore(base, reads[readId][i]);
-			AlnScoreType ins = forwardScore.at(frontRow, i + 1) + 
+			AlnScoreType ins = forwardScore.at(frontRow, i + 1) +
 							_subsMatrix.getScore(base, '-');
 			sub[i + 1] = std::max(match, ins);
 		}
@@ -147,13 +147,13 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base,
 }
 
 
-AlnScoreType Alignment::getScoringMatrix(const std::string& v, 
+AlnScoreType Alignment::getScoringMatrix(const std::string& v,
 										 const std::string& w,
-								  		 ScoreMatrix& scoreMat) 
+								  		 ScoreMatrix& scoreMat)
 {
 	AlnScoreType score = 0;
-	
-	for (size_t i = 0; i < v.size(); i++) 
+
+	for (size_t i = 0; i < v.size(); i++)
 	{
 		AlnScoreType score = _subsMatrix.getScore(v[i], '-');
 		scoreMat.at(i + 1, 0) = scoreMat.at(i, 0) + score;
@@ -169,17 +169,17 @@ AlnScoreType Alignment::getScoringMatrix(const std::string& v,
 	for (size_t i = 1; i < v.size() + 1; i++)
 	{
 		char key1 = v[i - 1];
-		for (size_t j = 1; j < w.size() + 1; j++) 
+		for (size_t j = 1; j < w.size() + 1; j++)
 		{
 			char key2 = w[j - 1];
 
-			AlnScoreType left = scoreMat.at(i, j - 1) + 
+			AlnScoreType left = scoreMat.at(i, j - 1) +
 							_subsMatrix.getScore('-', key2);
-			AlnScoreType up = scoreMat.at(i - 1, j) + 
+			AlnScoreType up = scoreMat.at(i - 1, j) +
 							_subsMatrix.getScore(key1, '-');
 			score = std::max(left, up);
 
-			AlnScoreType cross = scoreMat.at(i - 1, j - 1) + 
+			AlnScoreType cross = scoreMat.at(i - 1, j - 1) +
 							_subsMatrix.getScore(key1, key2);
 			score = std::max(score, cross);
 			scoreMat.at(i, j) = score;

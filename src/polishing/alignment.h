@@ -14,7 +14,7 @@
 #include "subs_matrix.h"
 
 
-class Alignment 
+class Alignment
 {
 
 public:

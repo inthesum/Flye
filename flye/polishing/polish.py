@@ -11,8 +11,11 @@ from __future__ import division
 import logging
 import subprocess, multiprocessing
 import os
+import time
 from collections import defaultdict
 import gzip
+from datetime import timedelta
+import threading
 
 from flye.polishing.alignment import (make_alignment, get_contigs_info,
                                       merge_chunks, split_into_chunks)
@@ -23,7 +26,6 @@ from flye.utils.utils import which
 import flye.config.py_cfg as cfg
 from flye.six import iteritems
 from flye.six.moves import range
-
 
 POLISH_BIN = "flye-modules"
 
@@ -50,10 +52,13 @@ def check_binaries():
 
 
 def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platform,
-           read_type, output_progress):
+           read_type, profile_file, log_file, output_progress):
     """
     High-level polisher interface
     """
+    profile_data = {}
+    total_time = 0
+
     logger_state = logger.disabled
     if not output_progress:
         logger.disabled = True
@@ -75,6 +80,8 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
     for i in range(num_iters):
         logger.info("Polishing genome (%d/%d)", i + 1, num_iters)
 
+        start_time = time.time()
+
         ####
         if not bam_input:
             logger.info("Running minimap2")
@@ -85,7 +92,15 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
             logger.info("Polishing with provided bam")
             alignment_file = read_seqs[0]
 
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        profile_data["minimap_" + str(i)] = [elapsed_time_seconds, elapsed_time]
+
         #####
+        start_time = time.time()
+
         logger.info("Separating alignment into bubbles")
         contigs_info = get_contigs_info(prev_assembly)
         bubbles_file = os.path.join(work_dir,
@@ -94,6 +109,12 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
             make_bubbles(alignment_file, contigs_info, prev_assembly,
                          read_platform, num_threads,
                          bubbles_file)
+
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        profile_data["bubbles_" + str(i)] = [elapsed_time_seconds, elapsed_time]
 
         logger.info("Alignment error rate: %f", mean_aln_error)
         consensus_out = os.path.join(work_dir, "consensus_{0}.fasta".format(i + 1))
@@ -107,13 +128,21 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
             return polished_file, stats_file
 
         #####
+        start_time = time.time()
+
         logger.info("Correcting bubbles")
         _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
-                        consensus_out, num_threads, output_progress, use_hopo)
-        polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out)
+                        consensus_out, num_threads, output_progress, use_hopo, log_file)
+        polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out, num_threads)
         fp.write_fasta_dict(polished_fasta, polished_file)
 
-        #Cleanup
+        end_time = time.time()
+        elapsed_time_seconds = end_time - start_time
+        total_time += elapsed_time_seconds
+        elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+        profile_data["correct_" + str(i)] = [elapsed_time_seconds, elapsed_time]
+
+        # Cleanup
         os.remove(bubbles_file)
         os.remove(consensus_out)
         if not bam_input:
@@ -122,13 +151,22 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         contig_lengths = polished_lengths
         prev_assembly = polished_file
 
+    with open(profile_file, "a") as file:
+        file.write("polish\n")
+        for function_name, function_time in profile_data.items():
+            elapsed_time_seconds = function_time[0]
+            elapsed_time = function_time[1]
+            file.write(
+                f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
+        file.write("\n")
+
     with open(stats_file, "w") as f:
         f.write("#seq_name\tlength\tcoverage\n")
         for ctg_id in contig_lengths:
             if ctg_id not in coverage_stats:
                 coverage_stats[ctg_id] = 0
             f.write("{0}\t{1}\t{2}\n".format(ctg_id,
-                    contig_lengths[ctg_id], coverage_stats[ctg_id]))
+                                             contig_lengths[ctg_id], coverage_stats[ctg_id]))
 
     with gzip.open(bed_coverage, "wt") as f:
         f.write("#seq_name\tstart\tend\tcoverage\n")
@@ -144,12 +182,21 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
     return prev_assembly, stats_file
 
 
+def format_timedelta(td):
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
 def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
-                            platform, read_type, polished_stats, num_threads):
+                            platform, read_type, polished_stats, num_threads, profile_file):
     """
     Generate polished graph edges sequences by extracting them from
     polished contigs
     """
+    profile_data = {}
+    total_time = 0
+
     logger.debug("Generating polished GFA")
 
     edges_new_coverage = {}
@@ -163,19 +210,31 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
 
     alignment_file = os.path.join(work_dir, "edges_aln.bam")
     polished_dict = fp.read_sequence_dict(polished_contigs)
+
+    start_time = time.time()
+
     make_alignment(polished_contigs, [edges_file], num_threads,
                    platform, read_type, alignment_file)
+
+    end_time = time.time()
+    elapsed_time_seconds = end_time - start_time
+    total_time += elapsed_time_seconds
+    elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+    profile_data["minimap"] = [elapsed_time_seconds, elapsed_time]
+
+    start_time = time.time()
+
     aln_reader = SynchronizedSamReader(alignment_file,
                                        polished_dict, multiprocessing.Manager(),
                                        cfg.vals["max_read_coverage"])
     aln_by_edge = defaultdict(list)
 
-    #getting one best alignment for each contig
-    #for ctg in polished_dict:
+    # getting one best alignment for each contig
+    # for ctg in polished_dict:
     #    ctg_aln = aln_reader.get_alignments(ctg)
     for aln in aln_reader.get_all_alignments():
         aln_by_edge[aln.qry_id].append(aln)
-    #logger.debug("Bam parsing done")
+    # logger.debug("Bam parsing done")
 
     MIN_CONTAINMENT = 0.9
     updated_seqs = 0
@@ -191,32 +250,47 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
                     map_start = min(map_start, aln.trg_start)
                     map_end = max(map_end, aln.trg_end)
 
-            new_seq = polished_dict[main_aln.trg_id][map_start : map_end]
+            new_seq = polished_dict[main_aln.trg_id][map_start: map_end]
             if main_aln.qry_sign == "-":
                 new_seq = fp.reverse_complement(new_seq)
 
-            #print(edge, main_aln.qry_len, len(new_seq), main_aln.qry_start, main_aln.qry_end)
+            # print(edge, main_aln.qry_len, len(new_seq), main_aln.qry_start, main_aln.qry_end)
             if len(new_seq) / aln.qry_len > MIN_CONTAINMENT:
                 edges_dict[edge] = new_seq
                 updated_seqs += 1
 
-    #writes fasta file with polished egdes
-    #edges_polished = os.path.join(work_dir, "polished_edges.fasta")
-    #fp.write_fasta_dict(edges_dict, edges_polished)
+    end_time = time.time()
+    elapsed_time_seconds = end_time - start_time
+    total_time += elapsed_time_seconds
+    elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
+    profile_data["align"] = [elapsed_time_seconds, elapsed_time]
 
-    #writes gfa file with polished edges
+    with open(profile_file, "a") as file:
+        file.write("generate_polished_edges\n")
+        for function_name, function_time in profile_data.items():
+            elapsed_time_seconds = function_time[0]
+            elapsed_time = function_time[1]
+            file.write(
+                f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
+        file.write("\n")
+
+    # writes fasta file with polished egdes
+    # edges_polished = os.path.join(work_dir, "polished_edges.fasta")
+    # fp.write_fasta_dict(edges_dict, edges_polished)
+
+    # writes gfa file with polished edges
     with open(os.path.join(work_dir, "polished_edges.gfa"), "w") as gfa_polished, \
-         open(gfa_file, "r") as gfa_in:
+            open(gfa_file, "r") as gfa_in:
         for line in gfa_in:
             if line.startswith("S"):
                 seq_id = line.split()[1]
                 coverage_tag = line.split()[3]
                 seq_num = seq_id.split("_")[1]
                 if seq_num in edges_new_coverage:
-                    #logger.info("from {0} to {1}".format(coverage_tag, edges_new_coverage[seq_num]))
+                    # logger.info("from {0} to {1}".format(coverage_tag, edges_new_coverage[seq_num]))
                     coverage_tag = "dp:i:{0}".format(edges_new_coverage[seq_num])
                 gfa_polished.write("S\t{0}\t{1}\t{2}\n"
-                                    .format(seq_id, edges_dict[seq_id], coverage_tag))
+                                   .format(seq_id, edges_dict[seq_id], coverage_tag))
             else:
                 gfa_polished.write(line)
 
@@ -276,16 +350,18 @@ def filter_by_coverage(args, stats_in, contigs_in, stats_out, contigs_out):
         f.write("#seq_name\tlength\tcoverage\n")
         for ctg_id in good_fasta:
             f.write("{0}\t{1}\t{2}\n".format(ctg_id,
-                    ctg_stats[ctg_id][0], ctg_stats[ctg_id][1]))
+                                             ctg_stats[ctg_id][0], ctg_stats[ctg_id][1]))
 
 
 def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
-                    consensus_out, num_threads, output_progress, use_hopo):
+                    consensus_out, num_threads, output_progress, use_hopo, log_file):
     """
     Invokes polishing binary
     """
+    logger.info("polishing bubbles")
+    logger.debug("-----Begin polishing log------")
     cmdline = [POLISH_BIN, "polisher", "--bubbles", bubbles_in, "--subs-mat", subs_matrix,
-               "--hopo-mat", hopo_matrix, "--out", consensus_out,
+               "--hopo-mat", hopo_matrix, "--out", consensus_out, "--log", log_file,
                "--threads", str(num_threads)]
     if not output_progress:
         cmdline.append("--quiet")
@@ -294,6 +370,7 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
         cmdline.append("--enable-hopo")
 
     try:
+        logger.debug("Running: " + " ".join(cmdline))
         subprocess.check_call(cmdline)
     except subprocess.CalledProcessError as e:
         if e.returncode == -9:
