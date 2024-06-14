@@ -11,7 +11,6 @@
 #include "../common/memory_info.h"
 
 #include "../polishing/bubble_processor.h"
-#include "../polishing/bubble_processor_pro.h"
 
 
 bool parseArgs(int argc, char** argv, std::string& bubblesFile, 
@@ -127,15 +126,10 @@ int polisher_main(int argc, char* argv[])
                           << getFreeMemorySize() / 1024 / 1024 / 1024 << " Gb";
     Logger::get().debug() << "Total CPUs: " << std::thread::hardware_concurrency();
 
-    if(numThreads < 10) {
-        BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads);
-        if (!outVerbose.empty()) bp.enableVerboseOutput(outVerbose);
-        bp.polishAll(bubblesFile, outConsensus);
-    } else {
-        BubbleProcessorPro bp(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads);
-        if (!outVerbose.empty()) bp.enableVerboseOutput(outVerbose);
-        bp.polishAll(bubblesFile, outConsensus);
-    }
+	BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo);
+	if (!outVerbose.empty())
+		bp.enableVerboseOutput(outVerbose);
+	bp.polishAll(bubblesFile, outConsensus, numThreads);
 
     Logger::get().debug() << "Peak RAM usage: "
                           << getPeakRSS() / 1024 / 1024 / 1024 << " Gb";
