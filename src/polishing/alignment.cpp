@@ -3,7 +3,7 @@
 //Released under the BSD license (see LICENSE file)
 
 #include "alignment.h"
-#include <immintrin.h> // Include SIMD intrinsics header
+#include <chrono>
 
 
 Alignment::Alignment(size_t size, const SubstitutionMatrix& sm):
@@ -24,7 +24,8 @@ AlnScoreType Alignment::globalAlignment(const std::string& consensus,
 		unsigned int y = reads[readId].size() + 1;
 		ScoreMatrix scoreMat(x, y, 0);
 
-		AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],scoreMat);
+		AlnScoreType score = this->getScoringMatrix(consensus, reads[readId],
+													  scoreMat);
 		_forwardScores[readId] = std::move(scoreMat);
 
 		//The reverse alignment is similar, but we need
@@ -34,15 +35,12 @@ AlnScoreType Alignment::globalAlignment(const std::string& consensus,
 
 		ScoreMatrix scoreMatRev(x, y, 0);
 		this->getScoringMatrix(revConsensus, revRead, scoreMatRev);
-//        scoreMatRev.reverseRows();
 		_reverseScores[readId] = std::move(scoreMatRev);
 
 		finalScore += score;
 	}
-
 	return finalScore;
 }
-
 
 AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 {
@@ -70,6 +68,10 @@ AlnScoreType Alignment::addDeletion(unsigned int letterIndex) const
 	return finalScore;
 }
 
+
+//AlnScoreType Alignment::addSubstitution(unsigned int wordIndex,
+//							   			unsigned int letterIndex,
+//							   			char base, const std::string& read)
 
 AlnScoreType Alignment::addSubstitution(unsigned int letterIndex, char base,
 										const std::vector<std::string>& reads) const
@@ -123,11 +125,12 @@ AlnScoreType Alignment::addInsertion(unsigned int pos, char base,
 
 		std::vector<AlnScoreType> sub(reads[readId].size() + 1);
 		sub[0] = forwardScore.at(frontRow, 0) + _subsMatrix.getScore(base, '-');
-
 		for (size_t i = 0; i < reads[readId].size(); ++i)
 		{
-			AlnScoreType match = forwardScore.at(frontRow, i) + _subsMatrix.getScore(base, reads[readId][i]);
-			AlnScoreType ins = forwardScore.at(frontRow, i + 1) + _subsMatrix.getScore(base, '-');
+			AlnScoreType match = forwardScore.at(frontRow, i) +
+							_subsMatrix.getScore(base, reads[readId][i]);
+			AlnScoreType ins = forwardScore.at(frontRow, i + 1) +
+							_subsMatrix.getScore(base, '-');
 			sub[i + 1] = std::max(match, ins);
 		}
 
@@ -170,11 +173,14 @@ AlnScoreType Alignment::getScoringMatrix(const std::string& v,
 		{
 			char key2 = w[j - 1];
 
-			AlnScoreType left = scoreMat.at(i, j - 1) + _subsMatrix.getScore('-', key2);
-			AlnScoreType up = scoreMat.at(i - 1, j) + _subsMatrix.getScore(key1, '-');
+			AlnScoreType left = scoreMat.at(i, j - 1) +
+							_subsMatrix.getScore('-', key2);
+			AlnScoreType up = scoreMat.at(i - 1, j) +
+							_subsMatrix.getScore(key1, '-');
 			score = std::max(left, up);
 
-			AlnScoreType cross = scoreMat.at(i - 1, j - 1) + _subsMatrix.getScore(key1, key2);
+			AlnScoreType cross = scoreMat.at(i - 1, j - 1) +
+							_subsMatrix.getScore(key1, key2);
 			score = std::max(score, cross);
 			scoreMat.at(i, j) = score;
 		}

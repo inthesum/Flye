@@ -60,14 +60,6 @@ public:
 	size_t nrows() const {return _rows;}
 	size_t ncols() const {return _cols;}
 
-    T* data() { return _data; }
-    const T* data() const { return _data; }
-    void reverseRows() {
-        for (size_t i = 0; i < _rows; ++i) {
-            std::reverse(_data + i * _cols, _data + (i + 1) * _cols);
-        }
-    }
-
 private:
 	size_t _rows;
 	size_t _cols;
