@@ -53,15 +53,11 @@ class Bubble(object):
 
 
 def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
-                   results_queue, error_queue, bubbles_file, thread_id):
+                   results_queue, error_queue, bubbles_file,
+                   bubbles_file_lock):
     """
     Will run in parallel
     """
-    filename = bubbles_file
-    base, ext = filename.rsplit('.', 1)
-    filename = f"{base}_{thread_id}.{ext}"
-    out_stream = open(filename, "w")
-
     try:
         while True:
             ctg_region = chunk_feeder.get_chunk()
@@ -97,7 +93,8 @@ def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
             for b in ctg_bubbles:
                 b.position += ctg_region.start
 
-            _output_bubbles(ctg_bubbles, out_stream)
+            with bubbles_file_lock:
+                _output_bubbles(ctg_bubbles, open(bubbles_file, "a"))
             results_queue.put((ctg_id, len(ctg_bubbles), num_long_bubbles,
                                num_empty, num_long_branch, aln_errors,
                                mean_cov))
@@ -109,41 +106,6 @@ def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
         logger.error("Thread exception")
         logger.error(traceback.format_exc())
         error_queue.put(e)
-
-
-def combine_files(base_filename, total_threads):
-    total_size = 0
-    for thread_id in range(total_threads):
-        filename = base_filename
-        base, ext = filename.rsplit('.', 1)
-        filename = f"{base}_{thread_id}.{ext}"
-
-        try:
-            with open(filename, 'r') as file:
-                with open(base_filename, 'a') as combined_file:
-                    data = file.read()
-                    combined_file.write(data)
-                    total_size += len(data)
-                    # while True:
-                    #     data = file.read(1024)  # Read in chunks of 1KB (adjust as needed)
-                    #     if not data:
-                    #         break
-                    #     combined_file.write(data)
-                    #     total_size += len(data)
-        except FileNotFoundError:
-            print(f"File {filename} not found. Skipping...")
-
-    if total_size < 1024:
-        size_str = f"{total_size:.2f} bytes"
-    elif total_size < 1024 * 1024:
-        size_str = f"{total_size / 1024:.2f} KB"
-    elif total_size < 1024 * 1024 * 1024:
-        size_str = f"{total_size / (1024 * 1024):.2f} MB"
-    else:
-        size_str = f"{total_size / (1024 * 1024 * 1024):.2f} GB"
-
-    print(f"Files combined successfully into {base_filename}")
-    print(f"file size: {size_str}")
 
 
 def make_bubbles(alignment_path, contigs_info, contigs_path,
@@ -161,11 +123,11 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
 
     results_queue = manager.Queue()
     error_queue = manager.Queue()
+    bubbles_out_lock = multiprocessing.Lock()
     #bubbles_out_handle = open(bubbles_out, "w")
 
     process_in_parallel(_thread_worker, (aln_reader, chunk_feeder, contigs_info, err_mode,
-                         results_queue, error_queue, bubbles_out), num_proc)
-    combine_files(bubbles_out, num_proc)
+                         results_queue, error_queue, bubbles_out, bubbles_out_lock), num_proc)
     #_thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
     #               results_queue, error_queue, bubbles_out, bubbles_out_lock)
     if not error_queue.empty():
@@ -205,73 +167,21 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
 
 def _output_bubbles(bubbles, out_stream):
     """
-    Outputs list of bubbles into file using batch writing,
-    flushing every 1000 bubbles
+    Outputs list of bubbles into file
     """
-    buffer = []
-    bubble_count = 0
-    flush_threshold = 1000
-
     for bubble in bubbles:
-        if not bubble.branches:
+        if len(bubble.branches) == 0:
             raise Exception("No branches in a bubble")
-
-        buffer.append(f">{bubble.contig_id} {bubble.position} {len(bubble.branches)} {bubble.sub_position}\n")
-        buffer.append(f"{bubble.consensus}\n")
+        out_stream.write(">{0} {1} {2} {3}\n".format(bubble.contig_id,
+                                                     bubble.position,
+                                                     len(bubble.branches),
+                                                     bubble.sub_position))
+        out_stream.write(bubble.consensus + "\n")
         for branch_id, branch in enumerate(bubble.branches):
-            buffer.append(f">{branch_id}\n{branch}\n")
-
-        bubble_count += 1
-
-        # Check if we've reached the flush threshold
-        if bubble_count >= flush_threshold:
-            out_stream.writelines(buffer)
-            buffer = []  # Clear the buffer
-            bubble_count = 0  # Reset the counter
-
-    # Write any remaining data in the buffer
-    if buffer:
-        out_stream.writelines(buffer)
+            out_stream.write(">{0}\n".format(branch_id))
+            out_stream.write(branch + "\n")
 
     out_stream.flush()
-
-
-# def _output_bubbles(bubbles, out_stream):
-#     """
-#     Outputs list of bubbles into file using batch writing
-#     """
-#     buffer = []
-#     for bubble in bubbles:
-#         if not bubble.branches:
-#             raise Exception("No branches in a bubble")
-#         buffer.append(f">{bubble.contig_id} {bubble.position} {len(bubble.branches)} {bubble.sub_position}\n")
-#         buffer.append(f"{bubble.consensus}\n")
-#         for branch_id, branch in enumerate(bubble.branches):
-#             buffer.append(f">{branch_id}\n{branch}\n")
-#
-#     if buffer:
-#         out_stream.writelines(buffer)
-#
-#     out_stream.flush()
-
-
-# def _output_bubbles(bubbles, out_stream):
-#     """
-#     Outputs list of bubbles into file
-#     """
-#     for bubble in bubbles:
-#         if len(bubble.branches) == 0:
-#             raise Exception("No branches in a bubble")
-#         out_stream.write(">{0} {1} {2} {3}\n".format(bubble.contig_id,
-#                                                      bubble.position,
-#                                                      len(bubble.branches),
-#                                                      bubble.sub_position))
-#         out_stream.write(bubble.consensus + "\n")
-#         for branch_id, branch in enumerate(bubble.branches):
-#             out_stream.write(">{0}\n".format(branch_id))
-#             out_stream.write(branch + "\n")
-#
-#     out_stream.flush()
 
 
 def _split_long_bubbles(bubbles):

@@ -1,6 +1,6 @@
-# (c) 2016 by Authors
-# This file is a part of ABruijn program.
-# Released under the BSD license (see LICENSE file)
+#(c) 2016 by Authors
+#This file is a part of ABruijn program.
+#Released under the BSD license (see LICENSE file)
 
 """
 Runs polishing binary in parallel and concatentes output
@@ -144,18 +144,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
 
         # Cleanup
         os.remove(bubbles_file)
-        for j in range(num_threads):
-            filename = bubbles_file
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_{j}.{ext}"
-            os.remove(filename)
-
-        for j in range(num_threads):
-            filename = consensus_out
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_{j}.{ext}"
-            os.remove(filename)
-
+        os.remove(consensus_out)
         if not bam_input:
             os.remove(alignment_file)
 
@@ -391,53 +380,13 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
         raise PolishException(str(e))
 
 
-# def _compose_sequence(consensus_file, num_threads):
-#     """
-#     Concatenates bubbles consensuses into genome
-#     """
-#     consensuses = defaultdict(list)
-#     coverage = defaultdict(list)
-#     for i in range(num_threads):
-#         filename = consensus_file
-#         base, ext = filename.rsplit('.', 1)
-#         filename = f"{base}_{i}.{ext}"
-#         with open(filename, "r") as f:
-#             header = True
-#             for line in f:
-#                 if header:
-#                     tokens = line.strip().split(" ")
-#                     if len(tokens) != 4:
-#                         raise Exception("Bubble format error")
-#
-#                     ctg_id = tokens[0][1:]
-#                     ctg_pos = int(tokens[1])
-#                     coverage = int(tokens[2])
-#                     ctg_sub_pos = int(tokens[3])
-#                 else:
-#                     consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
-#                 header = not header
-#
-#     polished_fasta = {}
-#     polished_stats = {}
-#     polished_coverages = {}
-#     for ctg_id, seqs in iteritems(consensuses):
-#         seqs.sort(key=lambda p: (p[0], p[1]))
-#         sorted_seqs = [p[3] for p in seqs]
-#         bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
-#         concat_seq = "".join(sorted_seqs)
-#         #mean_coverage = sum(coverage[ctg_id]) / len(coverage[ctg_id])
-#         polished_fasta[ctg_id] = concat_seq
-#         polished_stats[ctg_id] = len(concat_seq)
-#         polished_coverages[ctg_id] = bubble_coverages
-#
-#     return polished_fasta, polished_stats, polished_coverages
-
-
-def _read_consensus_file(filename, consensuses, thread_id):
+def _compose_sequence(consensus_file):
     """
-    Reads a consensus file and populates the consensuses dictionary with the data.
+    Concatenates bubbles consensuses into genome
     """
-    with open(filename, "r") as f:
+    consensuses = defaultdict(list)
+    coverage = defaultdict(list)
+    with open(consensus_file, "r") as f:
         header = True
         for line in f:
             if header:
@@ -447,42 +396,23 @@ def _read_consensus_file(filename, consensuses, thread_id):
 
                 ctg_id = tokens[0][1:]
                 ctg_pos = int(tokens[1])
-                cov = int(tokens[2])  # Renamed to avoid conflict with 'coverage' dict
+                coverage = int(tokens[2])
                 ctg_sub_pos = int(tokens[3])
             else:
-                consensuses[thread_id][ctg_id].append((ctg_pos, ctg_sub_pos, cov, line.strip()))
+                consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
             header = not header
-
-
-def _compose_sequence(consensus_file, num_threads):
-    """
-    Concatenates bubbles consensuses into genome
-    """
-    consensuses = [defaultdict(list) for _ in range(num_threads)]
-
-    threads = []
-    for i in range(num_threads):
-        filename = consensus_file
-        base, ext = filename.rsplit('.', 1)
-        filename = f"{base}_{i}.{ext}"
-        thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
-        thread.start()
-        threads.append(thread)
-
-    for thread in threads:
-        thread.join()
 
     polished_fasta = {}
     polished_stats = {}
     polished_coverages = {}
-    for cons in consensuses:
-        for ctg_id, seqs in cons.items():
-            seqs.sort(key=lambda p: (p[0], p[1]))
-            sorted_seqs = [p[3] for p in seqs]
-            bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
-            concat_seq = "".join(sorted_seqs)
-            polished_fasta[ctg_id] = concat_seq
-            polished_stats[ctg_id] = len(concat_seq)
-            polished_coverages[ctg_id] = bubble_coverages
+    for ctg_id, seqs in iteritems(consensuses):
+        seqs.sort(key=lambda p: (p[0], p[1]))
+        sorted_seqs = [p[3] for p in seqs]
+        bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
+        concat_seq = "".join(sorted_seqs)
+        #mean_coverage = sum(coverage[ctg_id]) / len(coverage[ctg_id])
+        polished_fasta[ctg_id] = concat_seq
+        polished_stats[ctg_id] = len(concat_seq)
+        polished_coverages[ctg_id] = bubble_coverages
 
     return polished_fasta, polished_stats, polished_coverages

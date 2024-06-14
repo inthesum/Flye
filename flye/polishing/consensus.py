@@ -35,7 +35,7 @@ class Profile(object):
         self.nucl = "-"
 
 
-def _thread_worker(aln_reader, chunk_feeder, platform, results_queue, error_queue, thread_id):
+def _thread_worker(aln_reader, chunk_feeder, platform, results_queue, error_queue):
     try:
         while True:
             ctg_region = chunk_feeder.get_chunk()
