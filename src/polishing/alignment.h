@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <iomanip>
 #include <stdexcept>
-#include <memory>
 
 #include "../common/matrix.h"
 #include "subs_matrix.h"
@@ -22,19 +21,24 @@ public:
 
     typedef Matrix<AlnScoreType> ScoreMatrix;
 
-    AlnScoreType globalAlignment(const std::string &consensus, const std::vector <std::string> &reads);
+    AlnScoreType globalAlignment(const std::string &consensus,
+                                 const std::vector <std::string> &reads);
+
     AlnScoreType addDeletion(unsigned int letterIndex) const;
-    AlnScoreType addSubstitution(unsigned int letterIndex, char base, const std::vector <std::string> &reads) const;
-    AlnScoreType addInsertion(unsigned int positionIndex, char base, const std::vector <std::string> &reads) const;
+
+    AlnScoreType addSubstitution(unsigned int letterIndex,
+                                 char base, const std::vector <std::string> &reads) const;
+
+    AlnScoreType addInsertion(unsigned int positionIndex,
+                              char base, const std::vector <std::string> &reads) const;
 
 private:
-    std::vector<ScoreMatrix> _forwardScores;
-    std::vector<ScoreMatrix> _reverseScores;
+    std::vector <ScoreMatrix> _forwardScores;
+    std::vector <ScoreMatrix> _reverseScores;
     const SubstitutionMatrix &_subsMatrix;
-    AlnScoreType getScoringMatrix(const std::string &v,
-                                  const std::string &w,
+
+    AlnScoreType getScoringMatrix(const std::string &v, const std::string &w,
                                   ScoreMatrix &scoreMat);
-    AlnScoreType getRevScoringMatrix(const std::string &v,
-                                     const std::string &w,
-                                     ScoreMatrix &scoreMat);
+    AlnScoreType getRevScoringMatrix(const std::string &v, const std::string &w,
+                                  ScoreMatrix &scoreMat);
 };

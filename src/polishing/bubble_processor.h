@@ -17,7 +17,7 @@
 #include "homo_polisher.h"
 #include "utility.h"
 #include "../common/progress_bar.h"
-#include "dinucleotide_fixer_avx.h"
+#include "dinucleotide_fixer.h"
 
 
 class BubbleProcessor
@@ -40,7 +40,7 @@ private:
     const HopoMatrix 		        _hopoMatrix;
     const GeneralPolisher 	        _generalPolisher;
     const HomoPolisher 		        _homoPolisher;
-    const DinucleotideFixerAVX	    _dinucFixer;
+    const DinucleotideFixer	        _dinucFixer;
 
     ProgressPercent 		            _progress;
     std::mutex                          _readMutex;

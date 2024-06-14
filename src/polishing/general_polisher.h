@@ -8,7 +8,7 @@
 
 #include "bubble.h"
 #include "subs_matrix.h"
-#include "alignment_avx.h"
+#include "alignment.h"
 
 class GeneralPolisher
 {
@@ -16,7 +16,6 @@ public:
 	GeneralPolisher(const SubstitutionMatrix& subsMatrix):
 		_subsMatrix(subsMatrix)
 	{}
-
     void polishBubble(Bubble& bubble) const;
     void polishBubble(Bubble& bubble,
                       int64_t& alignmentNum,
@@ -33,12 +32,10 @@ public:
 private:
 	StepInfo makeStep(const std::string& candidate, 
 					  const std::vector<std::string>& branches,
-					  AlignmentAVX& align) const;
+					  Alignment& align) const;
     StepInfo makeStep(const std::string& candidate,
                       const std::vector<std::string>& branches,
-                      const size_t readsNum,
-                      AlignmentAVX& align,
-//                      ScoreMemoryPool& memoryPool,
+                      Alignment& align,
                       int64_t& alignmentNum,
                       int64_t& deletionNum,
                       int64_t& insertionNum,
