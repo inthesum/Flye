@@ -25,9 +25,9 @@ class BubbleProcessor
 public:
     BubbleProcessor(const std::string& subsMatPath,
                     const std::string& hopoMatrixPath,
-                    bool  showProgress, bool hopoEndabled);
-    void polishAll(const std::string& inBubbles, const std::string& outConsensus,
-                   int numThreads);
+                    bool  showProgress, bool hopoEndabled,
+                    int numThreads);
+    void polishAll(const std::string& inBubbles, const std::string& outConsensus);
     void enableVerboseOutput(const std::string& filename);
 
 private:
@@ -42,13 +42,17 @@ private:
     const HomoPolisher 		        _homoPolisher;
     const DinucleotideFixerAVX      _dinucFixer;
 
-    ProgressPercent 		        _progress;
-    std::mutex                      _readMutex;
-    std::queue<Bubble>		        _preprocessBubbles;
+    ProgressPercent 		            _progress;
+    std::mutex                          _readMutex;
+//    std::queue<Bubble>                  _preprocessBubbles;
+    std::queue<std::unique_ptr<Bubble>> _preprocessBubbles;
 
-    std::ifstream			        _bubblesFile;
-    std::ofstream			        _logFile;
-    bool					        _verbose;
-    bool 					        _showProgress;
-    bool					        _hopoEnabled;
+    std::ifstream			            _bubblesFile;
+    std::ofstream			            _logFile;
+    bool					            _verbose;
+    bool 					            _showProgress;
+    bool					            _hopoEnabled;
+
+    const int                           _batchSize = 10;
+    const int                           _numThreads;
 };

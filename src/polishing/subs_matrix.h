@@ -11,7 +11,6 @@
 #include <iomanip>
 #include <vector>
 #include <limits>
-#include <unordered_map>
 
 typedef int64_t AlnScoreType;
 
@@ -19,12 +18,12 @@ class SubstitutionMatrix
 {
 public:
 	SubstitutionMatrix(const std::string& path);
-    AlnScoreType getScore(char v, char w) const
+	AlnScoreType getScore(char v, char w) const
 	{
 		return _matrix[(size_t)v * MAX_CHAR + (size_t)w];
 	}
 
-//private:
+private:
 	void loadMatrix(const std::string& path);
 	void setScore(char v, char w, AlnScoreType score)
 	{
