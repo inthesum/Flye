@@ -52,7 +52,7 @@ private:
     static bool                         _ready_to_process;
     static bool                         _done;
 
-    int                                 _batchSize = 100;
+    int                                 _batchSize = 1000;
     const int                           _numThreads;
 
     //    std::queue<Bubble>                  _preprocessBubbles;

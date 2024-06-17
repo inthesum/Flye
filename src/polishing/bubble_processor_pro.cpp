@@ -328,9 +328,8 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
     std::string candidate;
 
     int readBubbles = 0;
-    while (!_bubblesFile.eof() && readBubbles < maxRead)
+    while (readBubbles < maxRead && std::getline(_bubblesFile, buffer))
     {
-        std::getline(_bubblesFile, buffer);
         if (buffer.empty()) break;
 
         std::vector<std::string> elems = splitString(buffer, ' ');
@@ -339,15 +338,16 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
             throw std::runtime_error("Error parsing bubbles file");
         }
         std::getline(_bubblesFile, candidate);
-        std::transform(candidate.begin(), candidate.end(),
-                       candidate.begin(), ::toupper);
+        std::transform(candidate.begin(), candidate.end(),candidate.begin(), ::toupper);
 
         Bubble bubble;
-        bubble.candidate = candidate;
+        bubble.candidate = std::move(candidate);
         bubble.header = elems[0].substr(1, std::string::npos);
         bubble.position = std::stoi(elems[1]);
         int numOfReads = std::stoi(elems[2]);
         bubble.subPosition = std::stoi(elems[3]);
+
+        bubble.branches.reserve(numOfReads); // Reserve memory for branches
 
         int count = 0;
         while (count < numOfReads)
@@ -356,8 +356,7 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
 
             std::getline(_bubblesFile, buffer);
             std::getline(_bubblesFile, buffer);
-            std::transform(buffer.begin(), buffer.end(),
-                           buffer.begin(), ::toupper);
+            std::transform(buffer.begin(), buffer.end(),buffer.begin(), ::toupper);
             bubble.branches.push_back(buffer);
             count++;
         }
