@@ -32,9 +32,9 @@ public:
     void enableVerboseOutput(const std::string& filename);
 
 private:
-    void readThread();
-    void processThread(const std::string outFile);
-    void cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbles, int numBubbles);
+    void readThread(const std::string& inBubbles, const std::string outConsensus, const int id);
+    void processThread(const std::string outConsensus, const int id);
+    void cacheBubbles(std::ifstream& bubbleFile, std::queue<std::unique_ptr<Bubble>>& bubbles, int numBubbles);
     void writeBubbles(const std::vector<Bubble>& bubbles);
     void writeLog(const std::vector<Bubble>& bubbles);
 
@@ -50,7 +50,8 @@ private:
     static std::condition_variable      _cv_processor;
     static bool                         _ready_to_read;
     static bool                         _ready_to_process;
-    static bool                         _done;
+    static bool                         _done1;
+    static bool                         _done2;
 
     int                                 _batchSize = 1000;
     const int                           _numThreads;
@@ -58,7 +59,7 @@ private:
     //    std::queue<Bubble>                  _preprocessBubbles;
     std::queue<std::unique_ptr<Bubble>> _preprocessBubbles;
 
-    std::ifstream			            _bubblesFile;
+//    std::ifstream			            _bubblesFile;
     std::ofstream			            _logFile;
     bool					            _verbose;
     bool 					            _showProgress;

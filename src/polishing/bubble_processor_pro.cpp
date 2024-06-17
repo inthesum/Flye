@@ -15,17 +15,18 @@ std::condition_variable BubbleProcessorPro::_cv_reader;
 std::condition_variable BubbleProcessorPro::_cv_processor;
 bool BubbleProcessorPro::_ready_to_read = true;
 bool BubbleProcessorPro::_ready_to_process = false;
-bool BubbleProcessorPro::_done = false;
+bool BubbleProcessorPro::_done1 = false;
+bool BubbleProcessorPro::_done2 = false;
 
-namespace
-{
-    size_t fileSize(const std::string& filename)
-    {
-        struct stat st;
-        if (stat(filename.c_str(), &st) != 0) return 0;
-        return st.st_size;
-    }
-}
+//namespace
+//{
+//    size_t fileSize(const std::string& filename)
+//    {
+//        struct stat st;
+//        if (stat(filename.c_str(), &st) != 0) return 0;
+//        return st.st_size;
+//    }
+//}
 
 
 BubbleProcessorPro::BubbleProcessorPro(const std::string& subsMatPath,
@@ -47,51 +48,56 @@ BubbleProcessorPro::BubbleProcessorPro(const std::string& subsMatPath,
 void BubbleProcessorPro::polishAll(const std::string& inBubbles,
                                 const std::string& outConsensus)
 {
-    size_t fileLength = fileSize(inBubbles);
-    if (!fileLength)
-    {
-        throw std::runtime_error("Empty bubbles file!");
-    }
-    _bubblesFile.open(inBubbles);
-    if (!_bubblesFile.is_open())
-    {
-        throw std::runtime_error("Error opening bubbles file");
-    }
-
-    _progress.setFinalCount(fileLength);
+//    size_t fileLength = fileSize(inBubbles);
+//    if (!fileLength)
+//    {
+//        throw std::runtime_error("Empty bubbles file!");
+//    }
+//    _bubblesFile.open(inBubbles);
+//    if (!_bubblesFile.is_open())
+//    {
+//        throw std::runtime_error("Error opening bubbles file");
+//    }
+//
+//    _progress.setFinalCount(fileLength);
 
     std::vector<std::thread> threads(_numThreads);
-    threads[0] = std::thread(&BubbleProcessorPro::readThread, this);
 
-    std::string filename = outConsensus;
-    size_t dotPos = filename.find('.');
-    filename.insert(dotPos, "_" + std::to_string(0));
-    std::ofstream consensusFile(filename);
-    if (!consensusFile.is_open())
-    {
-        throw std::runtime_error("Error opening output file: " + filename);
-    }
-    consensusFile.close();
+    if (_numThreads <= 16) {
+        _done2 = true;
+        threads[0] = std::thread(&BubbleProcessorPro::readThread, this, inBubbles, outConsensus, 0);
 
-    for (size_t i = 1; i < threads.size(); ++i)
-    {
-        std::string filename = outConsensus;
-        size_t dotPos = filename.find('.');
-        filename.insert(dotPos, "_" + std::to_string(i));
-        threads[i] = std::thread(&BubbleProcessorPro::processThread, this, filename);
+        for (size_t i = 1; i < threads.size(); ++i)
+        {
+            threads[i] = std::thread(&BubbleProcessorPro::processThread, this, outConsensus, i);
+        }
+    } else {
+        threads[0] = std::thread(&BubbleProcessorPro::readThread, this, inBubbles, outConsensus, 0);
+        threads[1] = std::thread(&BubbleProcessorPro::readThread, this, inBubbles, outConsensus, 1);
+
+        for (size_t i = 2; i < threads.size(); ++i)
+        {
+            threads[i] = std::thread(&BubbleProcessorPro::processThread, this, outConsensus, i);
+        }
     }
+
+
     for (size_t i = 0; i < threads.size(); ++i)
     {
         threads[i].join();
     }
 
-    if (_showProgress) _progress.setDone();
+//    if (_showProgress) _progress.setDone();
 }
 
 
-void BubbleProcessorPro::processThread(const std::string outFile)
+void BubbleProcessorPro::processThread(const std::string outConsensus, const int id)
 {
     auto start = std::chrono::high_resolution_clock::now();
+
+    std::string outFile = outConsensus;
+    size_t dotPos = outFile.find('.');
+    outFile.insert(dotPos, "_" + std::to_string(id));
 
     std::ofstream consensusFile(outFile);
     if (!consensusFile.is_open())
@@ -130,12 +136,12 @@ void BubbleProcessorPro::processThread(const std::string outFile)
         auto startWaiting = std::chrono::high_resolution_clock::now();
 
         std::unique_lock<std::mutex> lock(_mtx);
-        _cv_processor.wait(lock, []{ return _ready_to_process || _done; });
+        _cv_processor.wait(lock, []{ return _ready_to_process; });
 
         auto endWaiting = std::chrono::high_resolution_clock::now();
         waitReadDuration += endWaiting - startWaiting;
 
-        if (_done && _preprocessBubbles.empty()) {
+        if (_done1 && _done2 && _preprocessBubbles.empty()) {
 //            if (counter != 0) {
 //                auto startWriting = std::chrono::high_resolution_clock::now();
 //                consensusFile << bufferedBubbles.str();
@@ -182,7 +188,7 @@ void BubbleProcessorPro::processThread(const std::string outFile)
 //                counter++;
             }
 
-            if (_preprocessBubbles.empty() && !_done) {
+            if (_preprocessBubbles.empty() && !(_done1 && _done2)) {
                 _ready_to_read = true;
                 _ready_to_process = false;
                 _cv_reader.notify_one();
@@ -270,18 +276,38 @@ void BubbleProcessorPro::enableVerboseOutput(const std::string& filename)
 }
 
 
-void BubbleProcessorPro::readThread() {
+void BubbleProcessorPro::readThread(const std::string& inBubbles, const std::string outConsensus, const int id) {
     auto start = std::chrono::high_resolution_clock::now();
+
+    std::string inFile = inBubbles;
+    size_t dotPos = inFile.find('.');
+    std::string str = {char('a' + id)};
+    inFile.insert(dotPos, "_" + str);
+    std::ifstream bubbleFile(inFile);
+    if (!bubbleFile.is_open())
+    {
+        throw std::runtime_error("Error opening input file: " + inFile);
+    }
+
+    std::string outFile = outConsensus;
+    dotPos = outFile.find('.');
+    outFile.insert(dotPos, "_" + std::to_string(id));
+    std::ofstream consensusFile(outFile);
+    if (!consensusFile.is_open())
+    {
+        throw std::runtime_error("Error opening output file: " + outFile);
+    }
+    consensusFile.close();
 
     std::queue<std::unique_ptr<Bubble>> bubbles;
     std::chrono::duration<double> duration(0);
     std::chrono::duration<double> cacheBubblesDuration(0);
     std::chrono::duration<double> waitDuration(0);
 
-    while (!_bubblesFile.eof()) {
+    while (!bubbleFile.eof()) {
         auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
 
-        this->cacheBubbles(bubbles, _batchSize * (_numThreads - 1));
+        this->cacheBubbles(bubbleFile, bubbles, _batchSize * (_numThreads - 1));
 
         auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
         cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
@@ -294,11 +320,6 @@ void BubbleProcessorPro::readThread() {
         auto waitEnd = std::chrono::high_resolution_clock::now();
         waitDuration += waitEnd - waitStart;
 
-//        while (!bubbles.empty()) {
-//            _preprocessBubbles.push(std::move(bubbles.front()));
-//            bubbles.pop();
-//        }
-
         std::swap(bubbles, _preprocessBubbles);
 
         _ready_to_read = false;
@@ -306,10 +327,12 @@ void BubbleProcessorPro::readThread() {
         _cv_processor.notify_all();
     }
 
-    _done = true;
+    (id == 0) ? _done1 = true : _done2 = true;
     _ready_to_process = true;
     _cv_processor.notify_all();
-    _bubblesFile.close();
+    bubbleFile.close();
+
+    _batchSize = 1000;
 
     auto end = std::chrono::high_resolution_clock::now(); // End timer
     duration = end - start;
@@ -322,13 +345,13 @@ void BubbleProcessorPro::readThread() {
 }
 
 
-void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbles, int maxRead)
+void BubbleProcessorPro::cacheBubbles(std::ifstream& bubbleFile, std::queue<std::unique_ptr<Bubble>>& bubbles, int maxRead)
 {
     std::string buffer;
     std::string candidate;
 
     int readBubbles = 0;
-    while (readBubbles < maxRead && std::getline(_bubblesFile, buffer))
+    while (readBubbles < maxRead && std::getline(bubbleFile, buffer))
     {
         if (buffer.empty()) break;
 
@@ -337,7 +360,7 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
         {
             throw std::runtime_error("Error parsing bubbles file");
         }
-        std::getline(_bubblesFile, candidate);
+        std::getline(bubbleFile, candidate);
         std::transform(candidate.begin(), candidate.end(),candidate.begin(), ::toupper);
 
         Bubble bubble;
@@ -354,8 +377,8 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
         {
             if (buffer.empty()) break;
 
-            std::getline(_bubblesFile, buffer);
-            std::getline(_bubblesFile, buffer);
+            std::getline(bubbleFile, buffer);
+            std::getline(bubbleFile, buffer);
             std::transform(buffer.begin(), buffer.end(),buffer.begin(), ::toupper);
             bubble.branches.push_back(buffer);
             count++;
@@ -377,9 +400,9 @@ void BubbleProcessorPro::cacheBubbles(std::queue<std::unique_ptr<Bubble>>& bubbl
         std::cout << "new batch size: " << _batchSize << std::endl;
     }
 
-    int64_t filePos = _bubblesFile.tellg();
-    if (_showProgress && filePos > 0)
-    {
-        _progress.setValue(filePos);
-    }
+//    int64_t filePos = bubbleFile.tellg();
+//    if (_showProgress && filePos > 0)
+//    {
+//        _progress.setValue(filePos);
+//    }
 }

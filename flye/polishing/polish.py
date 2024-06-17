@@ -119,13 +119,13 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         logger.info("Alignment error rate: %f", mean_aln_error)
         consensus_out = os.path.join(work_dir, "consensus_{0}.fasta".format(i + 1))
         polished_file = os.path.join(work_dir, "polished_{0}.fasta".format(i + 1))
-        if os.path.getsize(bubbles_file) == 0:
-            logger.info("No reads were aligned during polishing")
-            if not output_progress:
-                logger.disabled = logger_state
-            open(stats_file, "w").write("#seq_name\tlength\tcoverage\n")
-            open(polished_file, "w")
-            return polished_file, stats_file
+        # if os.path.getsize(bubbles_file) == 0:
+        #     logger.info("No reads were aligned during polishing")
+        #     if not output_progress:
+        #         logger.disabled = logger_state
+        #     open(stats_file, "w").write("#seq_name\tlength\tcoverage\n")
+        #     open(polished_file, "w")
+        #     return polished_file, stats_file
 
         #####
         start_time = time.time()
@@ -143,7 +143,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         profile_data["correct_" + str(i)] = [elapsed_time_seconds, elapsed_time]
 
         # Cleanup
-        os.remove(bubbles_file)
+        # os.remove(bubbles_file)
         for j in range(num_threads):
             filename = bubbles_file
             base, ext = filename.rsplit('.', 1)
