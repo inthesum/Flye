@@ -128,6 +128,8 @@ def combine_files(files):
             except FileNotFoundError:
                 print(f"File {from_file} not found. Skipping...")
 
+            os.remove(from_file)
+
         print(f"Files combined successfully into {to_file}")
         print(f"file size: {os.stat(to_file).st_size} bytes")
 

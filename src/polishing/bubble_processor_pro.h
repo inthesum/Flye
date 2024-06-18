@@ -34,7 +34,7 @@ public:
 private:
     void readThread(const std::string& inBubbles, const std::string outConsensus, const int id);
     void processThread(const std::string outConsensus, const int id);
-    void cacheBubbles(std::ifstream& bubbleFile, std::queue<std::unique_ptr<Bubble>>& bubbles, int numBubbles);
+    void cacheBubbles(std::ifstream& bubbleFile, std::queue<std::unique_ptr<Bubble>>& bubbles, int& batchSize);
     void writeBubbles(const std::vector<Bubble>& bubbles);
     void writeLog(const std::vector<Bubble>& bubbles);
 
@@ -52,8 +52,8 @@ private:
     static bool                         _ready_to_process;
     static bool                         _done1;
     static bool                         _done2;
+    static int                          _batchSize;
 
-    int                                 _batchSize = 1000;
     const int                           _numThreads;
 
     //    std::queue<Bubble>                  _preprocessBubbles;

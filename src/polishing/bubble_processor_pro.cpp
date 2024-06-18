@@ -17,6 +17,7 @@ bool BubbleProcessorPro::_ready_to_read = true;
 bool BubbleProcessorPro::_ready_to_process = false;
 bool BubbleProcessorPro::_done1 = false;
 bool BubbleProcessorPro::_done2 = false;
+int BubbleProcessorPro::_batchSize = 100;
 
 //namespace
 //{
@@ -303,11 +304,12 @@ void BubbleProcessorPro::readThread(const std::string& inBubbles, const std::str
     std::chrono::duration<double> duration(0);
     std::chrono::duration<double> cacheBubblesDuration(0);
     std::chrono::duration<double> waitDuration(0);
+    int batchSize = _batchSize;
 
     while (!bubbleFile.eof()) {
         auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
 
-        this->cacheBubbles(bubbleFile, bubbles, _batchSize * (_numThreads - 1));
+        this->cacheBubbles(bubbleFile, bubbles, batchSize);
 
         auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
         cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
@@ -325,14 +327,13 @@ void BubbleProcessorPro::readThread(const std::string& inBubbles, const std::str
         _ready_to_read = false;
         _ready_to_process = true;
         _cv_processor.notify_all();
+        _batchSize = batchSize;
     }
 
     (id == 0) ? _done1 = true : _done2 = true;
     _ready_to_process = true;
     _cv_processor.notify_all();
     bubbleFile.close();
-
-    _batchSize = 1000;
 
     auto end = std::chrono::high_resolution_clock::now(); // End timer
     duration = end - start;
@@ -345,8 +346,9 @@ void BubbleProcessorPro::readThread(const std::string& inBubbles, const std::str
 }
 
 
-void BubbleProcessorPro::cacheBubbles(std::ifstream& bubbleFile, std::queue<std::unique_ptr<Bubble>>& bubbles, int maxRead)
+void BubbleProcessorPro::cacheBubbles(std::ifstream& bubbleFile, std::queue<std::unique_ptr<Bubble>>& bubbles, int& batchSize)
 {
+    int maxRead = batchSize * (_numThreads - 1);
     std::string buffer;
     std::string candidate;
 
@@ -395,9 +397,9 @@ void BubbleProcessorPro::cacheBubbles(std::ifstream& bubbleFile, std::queue<std:
 
     if(readBubbles != maxRead) {
         std::cout << std::endl;
-        std::cout << "current batch size: " << _batchSize << std::endl;
-        _batchSize = readBubbles / (_numThreads - 1) + 1;
-        std::cout << "new batch size: " << _batchSize << std::endl;
+        std::cout << "current batch size: " << batchSize << std::endl;
+        batchSize = readBubbles / (_numThreads - 1) + 1;
+        std::cout << "new batch size: " << batchSize << std::endl;
     }
 
 //    int64_t filePos = bubbleFile.tellg();
