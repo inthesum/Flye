@@ -53,6 +53,6 @@ private:
     bool 					            _showProgress;
     bool					            _hopoEnabled;
 
-    int                           _batchSize = 1000000;
+    int                                 _batchSize = 500000;
     const int                           _numThreads;
 };

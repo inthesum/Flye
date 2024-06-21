@@ -325,7 +325,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
     if(readBubbles != maxRead) {
         std::cout << std::endl;
         std::cout << "current batch size: " << _batchSize << std::endl;
-        _batchSize = readBubbles / _numThreads;
+        _batchSize = readBubbles / _numThreads + 1;
         std::cout << "new batch size: " << _batchSize << std::endl;
     }
 
