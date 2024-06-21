@@ -44,7 +44,6 @@ private:
 
     ProgressPercent 		            _progress;
     std::mutex                          _readMutex;
-//    std::queue<Bubble>                  _preprocessBubbles;
     std::queue<std::unique_ptr<Bubble>> _preprocessBubbles;
 
     std::ifstream			            _bubblesFile;
@@ -53,6 +52,7 @@ private:
     bool 					            _showProgress;
     bool					            _hopoEnabled;
 
-    int                                 _batchSize = 500000;
+    int                                 _batchSize = 250000;
+    bool                                _done = false;
     const int                           _numThreads;
 };

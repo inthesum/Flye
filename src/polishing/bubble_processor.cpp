@@ -112,33 +112,26 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     const int MAX_BUBBLE = 5000;
     int numBubbles = 0;
     int numBubblesPolished = 0;
-//    int counter = 0;
     std::queue<std::unique_ptr<Bubble>> bubbles;
     std::ostringstream bufferedBubbles;
 
-    auto startWaiting = std::chrono::high_resolution_clock::now();
-    _readMutex.lock();
-    auto endWaiting = std::chrono::high_resolution_clock::now();
-    waitReadDuration += endWaiting - startWaiting;
-
     while (true)
     {
+        auto startWaiting = std::chrono::high_resolution_clock::now();
+        _readMutex.lock();
+        auto endWaiting = std::chrono::high_resolution_clock::now();
+        waitReadDuration += endWaiting - startWaiting;
+
         if (_preprocessBubbles.empty())
         {
-            auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
-            this->cacheBubbles(_batchSize * _numThreads);
-            auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
-            cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
+            if (!_done) {
+                auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
+                this->cacheBubbles(_batchSize * _numThreads);
+                auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
+                cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
 
-            if(_preprocessBubbles.empty())
-            {
-//                if (counter != 0) {
-//                    auto startWriting = std::chrono::high_resolution_clock::now();
-//                    consensusFile << bufferedBubbles.str();
-//                    auto endWriting = std::chrono::high_resolution_clock::now();
-//                    writeBubblesDuration += endWriting - startWriting;
-//                }
-
+                _readMutex.unlock();
+            } else {
                 consensusFile.close();
 
                 auto end = std::chrono::high_resolution_clock::now(); // End timer
@@ -170,86 +163,69 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
 
                 return;
             }
-        }
+        } else {
+            for(int i=0; i<_batchSize && !_preprocessBubbles.empty(); i++) {
+                bubbles.push(std::move(_preprocessBubbles.front()));
+                _preprocessBubbles.pop();
+                numBubbles++;
+            }
 
-        for(int i=0; i<_batchSize && !_preprocessBubbles.empty(); i++) {
-            bubbles.push(std::move(_preprocessBubbles.front()));
-            _preprocessBubbles.pop();
-            numBubbles++;
-//            counter++;
-        }
+            _readMutex.unlock();
 
-        _readMutex.unlock();
+            while(!bubbles.empty()) {
+                std::unique_ptr<Bubble> bubble = std::move(bubbles.front());
+                bubbles.pop();
 
-        while(!bubbles.empty()) {
-            std::unique_ptr<Bubble> bubble = std::move(bubbles.front());
-            bubbles.pop();
-
-            if (bubble->candidate.size() < MAX_BUBBLE &&
-                bubble->branches.size() > 1)
-            {
-                numBubblesPolished++;
-
-                auto generalPolisherStart = std::chrono::high_resolution_clock::now();
-//                _generalPolisher.polishBubble(bubble);
-
-                _generalPolisher.polishBubble(*bubble,
-                                              alignmentNum,
-                                              deletionNum,
-                                              insertionNum,
-                                              substitutionNum,
-                                              optimizeDuration,
-                                              makeStepDuration,
-                                              alignmentDuration,
-                                              deletionDuration,
-                                              insertionDuration,
-                                              substitutionDuration);
-                auto generalPolisherEnd = std::chrono::high_resolution_clock::now();
-                generalPolisherDuration += generalPolisherEnd - generalPolisherStart;
-
-                auto homoPolisherStart = std::chrono::high_resolution_clock::now();
-                if (_hopoEnabled)
+                if (bubble->candidate.size() < MAX_BUBBLE &&
+                    bubble->branches.size() > 1)
                 {
-                    _homoPolisher.polishBubble(*bubble);
-                }
-                auto homoPolisherEnd = std::chrono::high_resolution_clock::now();
-                homoPolisherDuration += homoPolisherEnd - homoPolisherStart;
+                    numBubblesPolished++;
 
-                auto fixerStart = std::chrono::high_resolution_clock::now();
-                _dinucFixer.fixBubble(*bubble);
-                auto fixerEnd = std::chrono::high_resolution_clock::now();
-                fixerDuration += fixerEnd - fixerStart;
+                    auto generalPolisherStart = std::chrono::high_resolution_clock::now();
+
+                    _generalPolisher.polishBubble(*bubble,
+                                                  alignmentNum,
+                                                  deletionNum,
+                                                  insertionNum,
+                                                  substitutionNum,
+                                                  optimizeDuration,
+                                                  makeStepDuration,
+                                                  alignmentDuration,
+                                                  deletionDuration,
+                                                  insertionDuration,
+                                                  substitutionDuration);
+                    auto generalPolisherEnd = std::chrono::high_resolution_clock::now();
+                    generalPolisherDuration += generalPolisherEnd - generalPolisherStart;
+
+                    auto homoPolisherStart = std::chrono::high_resolution_clock::now();
+                    if (_hopoEnabled)
+                    {
+                        _homoPolisher.polishBubble(*bubble);
+                    }
+                    auto homoPolisherEnd = std::chrono::high_resolution_clock::now();
+                    homoPolisherDuration += homoPolisherEnd - homoPolisherStart;
+
+                    auto fixerStart = std::chrono::high_resolution_clock::now();
+                    _dinucFixer.fixBubble(*bubble);
+                    auto fixerEnd = std::chrono::high_resolution_clock::now();
+                    fixerDuration += fixerEnd - fixerStart;
+                }
+
+                auto startWriting = std::chrono::high_resolution_clock::now();
+                bufferedBubbles << ">" << bubble->header << " " << bubble->position
+                                << " " << bubble->branches.size() << " " << bubble->subPosition << std::endl
+                                << bubble->candidate << std::endl;
+                auto endWriting = std::chrono::high_resolution_clock::now();
+                writeBubblesDuration += endWriting - startWriting;
             }
 
             auto startWriting = std::chrono::high_resolution_clock::now();
-            bufferedBubbles << ">" << bubble->header << " " << bubble->position
-                            << " " << bubble->branches.size() << " " << bubble->subPosition << std::endl
-                            << bubble->candidate << std::endl;
+            consensusFile << bufferedBubbles.str();
             auto endWriting = std::chrono::high_resolution_clock::now();
             writeBubblesDuration += endWriting - startWriting;
+
+            bufferedBubbles.str("");
         }
-
-        auto startWriting = std::chrono::high_resolution_clock::now();
-        consensusFile << bufferedBubbles.str();
-        auto endWriting = std::chrono::high_resolution_clock::now();
-        writeBubblesDuration += endWriting - startWriting;
-
-        bufferedBubbles.str("");
-
-//        if (counter >= _batchSize * 100) {
-//            auto startWriting = std::chrono::high_resolution_clock::now();
-//            consensusFile << bufferedBubbles.str();
-//            auto endWriting = std::chrono::high_resolution_clock::now();
-//            writeBubblesDuration += endWriting - startWriting;
-//
-//            counter = 0;
-//            bufferedBubbles.str("");
-//        }
-
-        startWaiting = std::chrono::high_resolution_clock::now();
-        _readMutex.lock();
-        endWaiting = std::chrono::high_resolution_clock::now();
-        waitReadDuration += endWaiting - startWaiting;
     }
 }
 
@@ -273,16 +249,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
     int readBubbles = 0;
     while (readBubbles < maxRead && std::getline(_bubblesFile, buffer))
     {
-        if (buffer.empty()) {
-            int64_t filePos = _bubblesFile.tellg();
-            if (_showProgress && filePos > 0)
-            {
-                _progress.setValue(filePos);
-            }
-            _bubblesFile.close();
-
-            return;
-        }
+        if (buffer.empty()) break;
 
         std::vector<std::string> elems = splitString(buffer, ' ');
         if (elems.size() != 4 || elems[0][0] != '>')
@@ -322,16 +289,19 @@ void BubbleProcessor::cacheBubbles(int maxRead)
         ++readBubbles;
     }
 
+    int64_t filePos = _bubblesFile.tellg();
+    if (_showProgress && filePos > 0)
+    {
+        _progress.setValue(filePos);
+    }
+
     if(readBubbles != maxRead) {
         std::cout << std::endl;
         std::cout << "current batch size: " << _batchSize << std::endl;
         _batchSize = readBubbles / _numThreads + 1;
         std::cout << "new batch size: " << _batchSize << std::endl;
-    }
 
-    int64_t filePos = _bubblesFile.tellg();
-    if (_showProgress && filePos > 0)
-    {
-        _progress.setValue(filePos);
+        _done = true;
+        _bubblesFile.close();
     }
 }
