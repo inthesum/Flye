@@ -322,6 +322,13 @@ void BubbleProcessor::cacheBubbles(int maxRead)
         ++readBubbles;
     }
 
+    if(readBubbles != maxRead) {
+        std::cout << std::endl;
+        std::cout << "current batch size: " << _batchSize << std::endl;
+        _batchSize = readBubbles / _numThreads;
+        std::cout << "new batch size: " << _batchSize << std::endl;
+    }
+
     int64_t filePos = _bubblesFile.tellg();
     if (_showProgress && filePos > 0)
     {
