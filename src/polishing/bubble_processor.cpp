@@ -139,6 +139,8 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
 //                    writeBubblesDuration += endWriting - startWriting;
 //                }
 
+                consensusFile.close();
+
                 auto end = std::chrono::high_resolution_clock::now(); // End timer
                 duration = end - start;
                 std::cout << std::endl;
@@ -269,10 +271,18 @@ void BubbleProcessor::cacheBubbles(int maxRead)
     std::string candidate;
 
     int readBubbles = 0;
-    while (!_bubblesFile.eof() && readBubbles < maxRead)
+    while (readBubbles < maxRead && std::getline(_bubblesFile, buffer))
     {
-        std::getline(_bubblesFile, buffer);
-        if (buffer.empty()) break;
+        if (buffer.empty()) {
+            int64_t filePos = _bubblesFile.tellg();
+            if (_showProgress && filePos > 0)
+            {
+                _progress.setValue(filePos);
+            }
+            _bubblesFile.close();
+
+            return;
+        }
 
         std::vector<std::string> elems = splitString(buffer, ' ');
         if (elems.size() != 4 || elems[0][0] != '>')
@@ -280,15 +290,16 @@ void BubbleProcessor::cacheBubbles(int maxRead)
             throw std::runtime_error("Error parsing bubbles file");
         }
         std::getline(_bubblesFile, candidate);
-        std::transform(candidate.begin(), candidate.end(),
-                       candidate.begin(), ::toupper);
+        std::transform(candidate.begin(), candidate.end(),candidate.begin(), ::toupper);
 
         Bubble bubble;
-        bubble.candidate = candidate;
+        bubble.candidate = std::move(candidate);
         bubble.header = elems[0].substr(1, std::string::npos);
         bubble.position = std::stoi(elems[1]);
         int numOfReads = std::stoi(elems[2]);
         bubble.subPosition = std::stoi(elems[3]);
+
+        bubble.branches.reserve(numOfReads); // Reserve memory for branches
 
         int count = 0;
         while (count < numOfReads)
@@ -297,8 +308,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
 
             std::getline(_bubblesFile, buffer);
             std::getline(_bubblesFile, buffer);
-            std::transform(buffer.begin(), buffer.end(),
-                           buffer.begin(), ::toupper);
+            std::transform(buffer.begin(), buffer.end(),buffer.begin(), ::toupper);
             bubble.branches.push_back(buffer);
             count++;
         }
