@@ -33,15 +33,7 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
         _showProgress(showProgress),
         _hopoEnabled(hopoEnabled),
         _numThreads(numThreads)
-{
-//    static char alphabet[] = {'A', 'C', 'G', 'T', '-'};
-//
-//    for(char c1 : alphabet) {
-//        for(char c2 : alphabet) {
-//            std::cout << c1 << " " << c2 << " " << _subsMatrix.getScore(c1, c2) << std::endl;
-//        }
-//    }
-}
+{}
 
 
 void BubbleProcessor::polishAll(const std::string& inBubbles,
@@ -118,7 +110,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
     while (true)
     {
         auto startWaiting = std::chrono::high_resolution_clock::now();
-        _readMutex.lock();
+        std::unique_lock<std::mutex> lock(_readMutex);
         auto endWaiting = std::chrono::high_resolution_clock::now();
         waitReadDuration += endWaiting - startWaiting;
 
@@ -130,7 +122,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
                 cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
 
-                _readMutex.unlock();
+                lock.unlock();
             } else {
                 consensusFile.close();
 
@@ -159,7 +151,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 std::cout << "insertion: " << std::fixed << std::setprecision(2) << insertionDuration.count() << " seconds" << std::endl;
                 std::cout << "substitution: " << std::fixed << std::setprecision(2) << substitutionDuration.count() << " seconds" << std::endl;
 
-                _readMutex.unlock();
+                lock.unlock();
 
                 return;
             }
@@ -170,7 +162,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 numBubbles++;
             }
 
-            _readMutex.unlock();
+            lock.unlock();
 
             while(!bubbles.empty()) {
                 std::unique_ptr<Bubble> bubble = std::move(bubbles.front());
@@ -182,7 +174,6 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                     numBubblesPolished++;
 
                     auto generalPolisherStart = std::chrono::high_resolution_clock::now();
-
                     _generalPolisher.polishBubble(*bubble,
                                                   alignmentNum,
                                                   deletionNum,

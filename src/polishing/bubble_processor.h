@@ -36,11 +36,11 @@ private:
     void writeBubbles(const std::vector<Bubble>& bubbles);
     void writeLog(const std::vector<Bubble>& bubbles);
 
-    const SubstitutionMatrix        _subsMatrix;
-    const HopoMatrix 		        _hopoMatrix;
-    const GeneralPolisher 	        _generalPolisher;
-    const HomoPolisher 		        _homoPolisher;
-    const DinucleotideFixerAVX      _dinucFixer;
+    const SubstitutionMatrix            _subsMatrix;
+    const HopoMatrix 		            _hopoMatrix;
+    const GeneralPolisher 	            _generalPolisher;
+    const HomoPolisher 		            _homoPolisher;
+    const DinucleotideFixerAVX          _dinucFixer;
 
     ProgressPercent 		            _progress;
     std::mutex                          _readMutex;
@@ -52,7 +52,7 @@ private:
     bool 					            _showProgress;
     bool					            _hopoEnabled;
 
-    int                                 _batchSize = 250000;
+    int                                 _batchSize = 100000;
     bool                                _done = false;
     const int                           _numThreads;
 };
