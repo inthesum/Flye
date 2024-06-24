@@ -284,7 +284,12 @@ void BubbleProcessorPro::readThread() {
         this->cacheBubbles(bubbles, _batchSize * (_numThreads - 1));
 
         auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> d = cacheBubblesEnd - cacheBubblesStart;
         cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
+
+        std::cout << std::endl;
+        std::cout << "write bubbles: " << std::fixed << std::setprecision(2) << d.count() << " seconds" << std::endl;
+        std::cout << std::endl;
 
         auto waitStart = std::chrono::high_resolution_clock::now();
 
