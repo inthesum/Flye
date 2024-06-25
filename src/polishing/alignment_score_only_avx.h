@@ -7,15 +7,11 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <iomanip>
-#include <stdexcept>
-#include <memory>
 #include <chrono>
 
+#include "subs_matrix.h"
 #include "score_matrix.h"
 #include "score_matrix3d.h"
-#include "subs_matrix.h"
-
 
 class AlignmentScoreOnlyAVX {
 
@@ -38,12 +34,5 @@ private:
     std::vector<ScoreMatrix> _subsScores_;
 
     const size_t batchNum;
-
-    __m256i mm256_max_epi64(__m256i a, __m256i b) {
-        __m256i cmp_mask = _mm256_cmpgt_epi64(a, b);
-        __m256i result = _mm256_blendv_epi8(b, a, cmp_mask);
-
-        return result;
-    }
 };
 
