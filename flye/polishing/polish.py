@@ -382,48 +382,6 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
         raise PolishException(str(e))
 
 
-# def _compose_sequence(consensus_file, num_threads):
-#     """
-#     Concatenates bubbles consensuses into genome
-#     """
-#     consensuses = defaultdict(list)
-#     coverage = defaultdict(list)
-#     for i in range(num_threads):
-#         filename = consensus_file
-#         base, ext = filename.rsplit('.', 1)
-#         filename = f"{base}_{i}.{ext}"
-#         with open(filename, "r") as f:
-#             header = True
-#             for line in f:
-#                 if header:
-#                     tokens = line.strip().split(" ")
-#                     if len(tokens) != 4:
-#                         raise Exception("Bubble format error")
-#
-#                     ctg_id = tokens[0][1:]
-#                     ctg_pos = int(tokens[1])
-#                     coverage = int(tokens[2])
-#                     ctg_sub_pos = int(tokens[3])
-#                 else:
-#                     consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
-#                 header = not header
-#
-#     polished_fasta = {}
-#     polished_stats = {}
-#     polished_coverages = {}
-#     for ctg_id, seqs in iteritems(consensuses):
-#         seqs.sort(key=lambda p: (p[0], p[1]))
-#         sorted_seqs = [p[3] for p in seqs]
-#         bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
-#         concat_seq = "".join(sorted_seqs)
-#         #mean_coverage = sum(coverage[ctg_id]) / len(coverage[ctg_id])
-#         polished_fasta[ctg_id] = concat_seq
-#         polished_stats[ctg_id] = len(concat_seq)
-#         polished_coverages[ctg_id] = bubble_coverages
-#
-#     return polished_fasta, polished_stats, polished_coverages
-
-
 def _read_consensus_file(filename, consensuses, thread_id):
     """
     Reads a consensus file and populates the consensuses dictionary with the data.
@@ -454,33 +412,35 @@ def _compose_sequence(consensus_file, num_threads):
     consensuses = [defaultdict(list) for _ in range(num_threads)]
 
     threads = []
-    if num_threads <= 16:
-        for i in range(num_threads):
-            filename = consensus_file
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_{i}.{ext}"
-            thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
-            thread.start()
-            threads.append(thread)
-    else:
-        num_threads1 = int(num_threads / 2)
+
+    def start_threads(num, prefix, offset):
+        for i in range(num):
+            base, ext = consensus_file.rsplit('.', 1)
+            filename = f"{base}_{prefix}_{i}.{ext}"
+            t = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, offset + i))
+            t.start()
+            threads.append(t)
+
+    if num_threads <= 8:
+        start_threads(num_threads, '', 0)
+    elif num_threads <= 16:
+        num_threads1 = num_threads // 2
         num_threads2 = num_threads - num_threads1
+        start_threads(num_threads1, 'a', 0)
+        start_threads(num_threads2, 'b', num_threads1)
+    else:
+        base_threads = num_threads // 4
+        remainder_threads = num_threads % 4
 
-        for i in range(num_threads1):
-            filename = consensus_file
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_a_{i}.{ext}"
-            thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
-            thread.start()
-            threads.append(thread)
+        num_threads1 = base_threads + (remainder_threads > 0)
+        num_threads2 = base_threads + (remainder_threads > 1)
+        num_threads3 = base_threads + (remainder_threads > 2)
+        num_threads4 = base_threads
 
-        for i in range(num_threads2):
-            filename = consensus_file
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_b_{i}.{ext}"
-            thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, num_threads1 + i))
-            thread.start()
-            threads.append(thread)
+        start_threads(num_threads1, 'a', 0)
+        start_threads(num_threads2, 'b', num_threads1)
+        start_threads(num_threads3, 'c', num_threads1 + num_threads2)
+        start_threads(num_threads4, 'd', num_threads1 + num_threads2 + num_threads3)
 
     for thread in threads:
         thread.join()

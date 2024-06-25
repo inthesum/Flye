@@ -163,40 +163,113 @@ def combine_files(files):
 
 
 def get_file_info(base_filename, total_threads):
-    total_size = 0
     files = []
+    total_size = 0
+
     for thread_id in range(total_threads):
-        filename = base_filename
-        base, ext = filename.rsplit('.', 1)
+        base, ext = base_filename.rsplit('.', 1)
         filename = f"{base}_{thread_id}.{ext}"
-        files.append(filename)
-        total_size += os.stat(filename).st_size
+        file_size = os.stat(filename).st_size
+        files.append((filename, file_size))
+        total_size += file_size
 
-    if total_threads <= 16:
+    if total_threads <= 8:
         to_file = base_filename
-        base, ext = to_file.rsplit('.', 1)
-        to_file = f"{base}_a.{ext}"
-        return {to_file: files}
+        return {to_file: [file for file, _ in files]}
+
+    elif total_threads <= 16:
+        return distribute_files(files, base_filename, 2)
+
     else:
-        to_file1 = base_filename
-        base, ext = to_file1.rsplit('.', 1)
-        to_file1 = f"{base}_a.{ext}"
+        return distribute_files(files, base_filename, 4)
 
-        to_file2 = base_filename
-        base, ext = to_file2.rsplit('.', 1)
-        to_file2 = f"{base}_b.{ext}"
 
-        from_files1 = []
-        from_files2 = []
-        current_size = 0
-        for file in files:
-            current_size += os.stat(file).st_size
-            if current_size < total_size / 2:
-                from_files1.append(file)
-            else:
-                from_files2.append(file)
+def distribute_files(files, base_filename, num_groups):
+    base, ext = base_filename.rsplit('.', 1)
+    group_files = {f"{base}_{chr(97 + i)}.{ext}": [] for i in range(num_groups)}
 
-        return {to_file1: from_files1, to_file2: from_files2}
+    # Distribute files more evenly based on their sizes
+    sorted_files = sorted(files, key=lambda x: x[1], reverse=True)
+    group_sizes = {key: 0 for key in group_files.keys()}
+
+    for filename, size in sorted_files:
+        smallest_group = min(group_sizes, key=group_sizes.get)
+        group_files[smallest_group].append(filename)
+        group_sizes[smallest_group] += size
+
+    return group_files
+
+
+# def get_file_info(base_filename, total_threads):
+#     total_size = 0
+#     files = []
+#     for thread_id in range(total_threads):
+#         filename = base_filename
+#         base, ext = filename.rsplit('.', 1)
+#         filename = f"{base}_{thread_id}.{ext}"
+#         files.append(filename)
+#         total_size += os.stat(filename).st_size
+#
+#     if total_threads <= 8:
+#         to_file = base_filename
+#         return {to_file: files}
+#
+#     elif total_threads <= 16:
+#         to_file1 = base_filename
+#         base, ext = to_file1.rsplit('.', 1)
+#         to_file1 = f"{base}_a.{ext}"
+#
+#         to_file2 = base_filename
+#         base, ext = to_file2.rsplit('.', 1)
+#         to_file2 = f"{base}_b.{ext}"
+#
+#         from_files1 = []
+#         from_files2 = []
+#         current_size = 0
+#         for file in files:
+#             current_size += os.stat(file).st_size
+#             if current_size < total_size / 2:
+#                 from_files1.append(file)
+#             else:
+#                 from_files2.append(file)
+#
+#         return {to_file1: from_files1, to_file2: from_files2}
+#
+#     else:
+#         to_file1 = base_filename
+#         base, ext = to_file1.rsplit('.', 1)
+#         to_file1 = f"{base}_a.{ext}"
+#
+#         to_file2 = base_filename
+#         base, ext = to_file2.rsplit('.', 1)
+#         to_file2 = f"{base}_b.{ext}"
+#
+#         to_file3 = base_filename
+#         base, ext = to_file3.rsplit('.', 1)
+#         to_file3 = f"{base}_c.{ext}"
+#
+#         to_file4 = base_filename
+#         base, ext = to_file4.rsplit('.', 1)
+#         to_file4 = f"{base}_d.{ext}"
+#
+#         from_files1 = []
+#         from_files2 = []
+#         from_files3 = []
+#         from_files4 = []
+#
+#         current_size = 0
+#         for file in files:
+#             current_size += os.stat(file).st_size
+#             if current_size < total_size / 4:
+#                 from_files1.append(file)
+#             elif current_size < total_size / 2:
+#                 from_files2.append(file)
+#             elif current_size < total_size / 4 * 3:
+#                 from_files3.append(file)
+#             else:
+#                 from_files4.append(file)
+#
+#         return {to_file1: from_files1, to_file2: from_files2, to_file3: from_files3, to_file4: from_files4}
 
 
 def make_bubbles(alignment_path, contigs_info, contigs_path,
@@ -287,44 +360,6 @@ def _output_bubbles(bubbles, out_stream):
         out_stream.writelines(buffer)
 
     out_stream.flush()
-
-
-# def _output_bubbles(bubbles, out_stream):
-#     """
-#     Outputs list of bubbles into file using batch writing
-#     """
-#     buffer = []
-#     for bubble in bubbles:
-#         if not bubble.branches:
-#             raise Exception("No branches in a bubble")
-#         buffer.append(f">{bubble.contig_id} {bubble.position} {len(bubble.branches)} {bubble.sub_position}\n")
-#         buffer.append(f"{bubble.consensus}\n")
-#         for branch_id, branch in enumerate(bubble.branches):
-#             buffer.append(f">{branch_id}\n{branch}\n")
-#
-#     if buffer:
-#         out_stream.writelines(buffer)
-#
-#     out_stream.flush()
-
-
-# def _output_bubbles(bubbles, out_stream):
-#     """
-#     Outputs list of bubbles into file
-#     """
-#     for bubble in bubbles:
-#         if len(bubble.branches) == 0:
-#             raise Exception("No branches in a bubble")
-#         out_stream.write(">{0} {1} {2} {3}\n".format(bubble.contig_id,
-#                                                      bubble.position,
-#                                                      len(bubble.branches),
-#                                                      bubble.sub_position))
-#         out_stream.write(bubble.consensus + "\n")
-#         for branch_id, branch in enumerate(bubble.branches):
-#             out_stream.write(">{0}\n".format(branch_id))
-#             out_stream.write(branch + "\n")
-#
-#     out_stream.flush()
 
 
 def _split_long_bubbles(bubbles):
