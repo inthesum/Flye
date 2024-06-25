@@ -126,9 +126,43 @@ int polisher_main(int argc, char* argv[])
                           << getFreeMemorySize() / 1024 / 1024 / 1024 << " Gb";
     Logger::get().debug() << "Total CPUs: " << std::thread::hardware_concurrency();
 
-    BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads);
-    if (!outVerbose.empty()) bp.enableVerboseOutput(outVerbose);
-    bp.polishAll(bubblesFile, outConsensus);
+    if (numThreads <= 16) {
+        BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads);
+        bp.polishAll(bubblesFile, outConsensus);
+    } else {
+        int numThreads1 = numThreads / 2;
+        int numThreads2 = numThreads - numThreads1;
+
+        std::string bubblesFile1 = bubblesFile;
+        size_t dotPos1 = bubblesFile1.find('.');
+        bubblesFile1.insert(dotPos1, "_a");
+
+        std::string outConsensus1 = outConsensus;
+        dotPos1 = outConsensus1.find('.');
+        outConsensus1.insert(dotPos1, "_a");
+
+        std::string bubblesFile2 = bubblesFile;
+        size_t dotPos2 = bubblesFile2.find('.');
+        bubblesFile2.insert(dotPos2, "_b");
+
+        std::string outConsensus2 = outConsensus;
+        dotPos2 = outConsensus2.find('.');
+        outConsensus2.insert(dotPos2, "_b");
+
+        BubbleProcessor bp1(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads1);
+        BubbleProcessor bp2(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads2);
+
+        std::ifstream in_file(bubblesFile1, std::ios::binary);
+        in_file.seekg(0, std::ios::end);
+        int file_size = in_file.tellg();
+        Logger::get().debug()<<"Size of the file is"<<" "<< file_size<<" "<<"bytes";
+
+        std::thread t1(&BubbleProcessor::polishAll, &bp1, bubblesFile1, outConsensus1);
+        std::thread t2(&BubbleProcessor::polishAll, &bp2, bubblesFile2, outConsensus2);
+
+        t1.join();
+        t2.join();
+    }
 
     Logger::get().debug() << "Peak RAM usage: "
                           << getPeakRSS() / 1024 / 1024 / 1024 << " Gb";

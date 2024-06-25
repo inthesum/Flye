@@ -105,7 +105,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         contigs_info = get_contigs_info(prev_assembly)
         bubbles_file = os.path.join(work_dir,
                                     "bubbles_{0}.fasta".format(i + 1))
-        coverage_stats, mean_aln_error = \
+        coverage_stats, mean_aln_error, to_files = \
             make_bubbles(alignment_file, contigs_info, prev_assembly,
                          read_platform, num_threads,
                          bubbles_file)
@@ -119,13 +119,15 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         logger.info("Alignment error rate: %f", mean_aln_error)
         consensus_out = os.path.join(work_dir, "consensus_{0}.fasta".format(i + 1))
         polished_file = os.path.join(work_dir, "polished_{0}.fasta".format(i + 1))
-        if os.path.getsize(bubbles_file) == 0:
-            logger.info("No reads were aligned during polishing")
-            if not output_progress:
-                logger.disabled = logger_state
-            open(stats_file, "w").write("#seq_name\tlength\tcoverage\n")
-            open(polished_file, "w")
-            return polished_file, stats_file
+
+        for to_file in to_files:
+            if os.path.getsize(to_file) == 0:
+                logger.info("No reads were aligned during polishing")
+                if not output_progress:
+                    logger.disabled = logger_state
+                open(stats_file, "w").write("#seq_name\tlength\tcoverage\n")
+                open(polished_file, "w")
+                return polished_file, stats_file
 
         #####
         start_time = time.time()
@@ -143,18 +145,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         profile_data["correct_" + str(i)] = [elapsed_time_seconds, elapsed_time]
 
         # Cleanup
-        os.remove(bubbles_file)
-        for j in range(num_threads):
-            filename = bubbles_file
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_{j}.{ext}"
-            os.remove(filename)
-
-        for j in range(num_threads):
-            filename = consensus_out
-            base, ext = filename.rsplit('.', 1)
-            filename = f"{base}_{j}.{ext}"
-            os.remove(filename)
+        # os.remove(bubbles_file)
 
         if not bam_input:
             os.remove(alignment_file)
@@ -453,6 +444,8 @@ def _read_consensus_file(filename, consensuses, thread_id):
                 consensuses[thread_id][ctg_id].append((ctg_pos, ctg_sub_pos, cov, line.strip()))
             header = not header
 
+    os.remove(filename)
+
 
 def _compose_sequence(consensus_file, num_threads):
     """
@@ -461,13 +454,33 @@ def _compose_sequence(consensus_file, num_threads):
     consensuses = [defaultdict(list) for _ in range(num_threads)]
 
     threads = []
-    for i in range(num_threads):
-        filename = consensus_file
-        base, ext = filename.rsplit('.', 1)
-        filename = f"{base}_{i}.{ext}"
-        thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
-        thread.start()
-        threads.append(thread)
+    if num_threads <= 16:
+        for i in range(num_threads):
+            filename = consensus_file
+            base, ext = filename.rsplit('.', 1)
+            filename = f"{base}_{i}.{ext}"
+            thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
+            thread.start()
+            threads.append(thread)
+    else:
+        num_threads1 = int(num_threads / 2)
+        num_threads2 = num_threads - num_threads1
+
+        for i in range(num_threads1):
+            filename = consensus_file
+            base, ext = filename.rsplit('.', 1)
+            filename = f"{base}_a_{i}.{ext}"
+            thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
+            thread.start()
+            threads.append(thread)
+
+        for i in range(num_threads2):
+            filename = consensus_file
+            base, ext = filename.rsplit('.', 1)
+            filename = f"{base}_b_{i}.{ext}"
+            thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, num_threads1 + i))
+            thread.start()
+            threads.append(thread)
 
     for thread in threads:
         thread.join()

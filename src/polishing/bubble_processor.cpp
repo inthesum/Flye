@@ -5,19 +5,7 @@
 #include <chrono>
 #include <thread>
 #include <iomanip>
-#include <sys/stat.h>
-
 #include "bubble_processor.h"
-
-namespace
-{
-    size_t fileSize(const std::string& filename)
-    {
-        struct stat st;
-        if (stat(filename.c_str(), &st) != 0) return 0;
-        return st.st_size;
-    }
-}
 
 
 BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
@@ -29,7 +17,6 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
         _generalPolisher(_subsMatrix),
         _homoPolisher(_subsMatrix, _hopoMatrix),
         _dinucFixer(_subsMatrix),
-        _verbose(false),
         _showProgress(showProgress),
         _hopoEnabled(hopoEnabled),
         _numThreads(numThreads)
@@ -39,18 +26,11 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
 void BubbleProcessor::polishAll(const std::string& inBubbles,
                                 const std::string& outConsensus)
 {
-    size_t fileLength = fileSize(inBubbles);
-    if (!fileLength)
-    {
-        throw std::runtime_error("Empty bubbles file!");
-    }
-    _bubblesFile.open(inBubbles);
+    _bubblesFile.open(inBubbles, std::ios::in);
     if (!_bubblesFile.is_open())
     {
         throw std::runtime_error("Error opening bubbles file");
     }
-
-    _progress.setFinalCount(fileLength);
 
     std::vector<std::thread> threads(_numThreads);
     for (size_t i = 0; i < threads.size(); ++i)
@@ -65,7 +45,7 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
         threads[i].join();
     }
 
-    if (_showProgress) _progress.setDone();
+    _bubblesFile.close();
 }
 
 
@@ -221,17 +201,6 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
 }
 
 
-void BubbleProcessor::enableVerboseOutput(const std::string& filename)
-{
-    _verbose = true;
-    _logFile.open(filename);
-    if (!_logFile.is_open())
-    {
-        throw std::runtime_error("Error opening log file");
-    }
-}
-
-
 void BubbleProcessor::cacheBubbles(int maxRead)
 {
     std::string buffer;
@@ -272,18 +241,11 @@ void BubbleProcessor::cacheBubbles(int maxRead)
         }
         if (count != numOfReads)
         {
-            //std::cerr << buffer << " " << count << " " << numOfReads << std::endl;
             throw std::runtime_error("Error parsing bubbles file");
         }
 
         _preprocessBubbles.push(std::make_unique<Bubble>(bubble));
         ++readBubbles;
-    }
-
-    int64_t filePos = _bubblesFile.tellg();
-    if (_showProgress && filePos > 0)
-    {
-        _progress.setValue(filePos);
     }
 
     if(readBubbles != maxRead) {
@@ -293,6 +255,5 @@ void BubbleProcessor::cacheBubbles(int maxRead)
         std::cout << "new batch size: " << _batchSize << std::endl;
 
         _done = true;
-        _bubblesFile.close();
     }
 }

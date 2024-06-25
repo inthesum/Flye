@@ -28,7 +28,6 @@ public:
                     bool  showProgress, bool hopoEndabled,
                     int numThreads);
     void polishAll(const std::string& inBubbles, const std::string& outConsensus);
-    void enableVerboseOutput(const std::string& filename);
 
 private:
     void parallelWorker(const std::string outFile);
@@ -42,17 +41,14 @@ private:
     const HomoPolisher 		            _homoPolisher;
     const DinucleotideFixerAVX          _dinucFixer;
 
-    ProgressPercent 		            _progress;
     std::mutex                          _readMutex;
     std::queue<std::unique_ptr<Bubble>> _preprocessBubbles;
 
     std::ifstream			            _bubblesFile;
-    std::ofstream			            _logFile;
-    bool					            _verbose;
     bool 					            _showProgress;
     bool					            _hopoEnabled;
 
-    int                                 _batchSize = 100000;
+    int                                 _batchSize = 1000;
     bool                                _done = false;
     const int                           _numThreads;
 };
