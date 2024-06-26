@@ -105,7 +105,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         contigs_info = get_contigs_info(prev_assembly)
         bubbles_file = os.path.join(work_dir,
                                     "bubbles_{0}.fasta".format(i + 1))
-        coverage_stats, mean_aln_error = \
+        coverage_stats, mean_aln_error, max_size = \
             make_bubbles(alignment_file, contigs_info, prev_assembly,
                          read_platform, num_threads,
                          bubbles_file)
@@ -132,7 +132,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
 
         logger.info("Correcting bubbles")
         _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
-                        consensus_out, num_threads, output_progress, use_hopo, log_file)
+                        consensus_out, num_threads, output_progress, use_hopo, log_file, max_size)
         polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out, num_threads)
         fp.write_fasta_dict(polished_fasta, polished_file)
 
@@ -143,7 +143,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         profile_data["correct_" + str(i)] = [elapsed_time_seconds, elapsed_time]
 
         # Cleanup
-        os.remove(bubbles_file)
+        # os.remove(bubbles_file)
         for j in range(num_threads):
             filename = bubbles_file
             base, ext = filename.rsplit('.', 1)
@@ -365,7 +365,7 @@ def filter_by_coverage(args, stats_in, contigs_in, stats_out, contigs_out):
 
 
 def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
-                    consensus_out, num_threads, output_progress, use_hopo, log_file):
+                    consensus_out, num_threads, output_progress, use_hopo, log_file, max_size):
     """
     Invokes polishing binary
     """
@@ -373,7 +373,7 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
     logger.debug("-----Begin polishing log------")
     cmdline = [POLISH_BIN, "polisher", "--bubbles", bubbles_in, "--subs-mat", subs_matrix,
                "--hopo-mat", hopo_matrix, "--out", consensus_out, "--log", log_file,
-               "--threads", str(num_threads)]
+               "--threads", str(num_threads), "--size", str(max_size)]
     if not output_progress:
         cmdline.append("--quiet")
 

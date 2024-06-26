@@ -37,7 +37,8 @@ BubbleProcessor::BubbleProcessor(const std::string& subsMatPath,
 
 
 void BubbleProcessor::polishAll(const std::string& inBubbles,
-                                const std::string& outConsensus)
+                                const std::string& outConsensus,
+                                const size_t maxSize)
 {
     size_t fileLength = fileSize(inBubbles);
     if (!fileLength)
@@ -52,38 +53,58 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 
     _progress.setFinalCount(fileLength);
 
+    const size_t totalCapacity = maxSize * _numThreads;
+    const size_t poolSizePerThread = maxSize;
+
+    // Allocate a large block of memory with 32-byte alignment
+    std::cout << "Total memory to allocate: " << totalCapacity * sizeof(AlnScoreType) << " bytes" << std::endl;
+    AlnScoreType* largeBlock = (AlnScoreType*)_mm_malloc(totalCapacity * sizeof(AlnScoreType), 32);
+    if (!largeBlock) {
+        std::cerr << "Failed to allocate memory." << std::endl;
+        return;
+    }
+
     std::vector<std::thread> threads(_numThreads);
-    for (size_t i = 0; i < threads.size(); ++i)
+    std::vector<ScoreMemoryPool> pools;
+
+    // Initialize memory pools for each thread
+    for (int i = 0; i < _numThreads; ++i) {
+        pools.emplace_back(largeBlock + i * poolSizePerThread, poolSizePerThread);
+    }
+
+    for (int i = 0; i < _numThreads; ++i)
     {
         std::string filename = outConsensus;
         size_t dotPos = filename.find('.');
         filename.insert(dotPos, "_" + std::to_string(i));
-        threads[i] = std::thread(&BubbleProcessor::parallelWorker, this, filename);
+        threads[i] = std::thread(&BubbleProcessor::parallelWorker, this, filename, std::ref(pools[i]));
     }
-    for (size_t i = 0; i < threads.size(); ++i)
-    {
-        threads[i].join();
+    for (auto& thread : threads) {
+        thread.join();
     }
+
+    // Free the large block of memory
+    _mm_free(largeBlock);
 
     if (_showProgress) _progress.setDone();
 }
 
 constexpr size_t batchSize = 4;
 
-int determineSize(const Bubble& bubble) {
-    int candidate_size = 10 * bubble.candidate.size();
-    int read_size = bubble.branches[bubble.branches.size() - 1].size();
-    int bubble_size = bubble.branches.size() + batchSize;
-    int score_matrix3d_size = 2 * candidate_size * read_size * bubble_size;
+//int determineSize(const Bubble& bubble) {
+//    int candidate_size = 10 * bubble.candidate.size();
+//    int read_size = bubble.branches[bubble.branches.size() - 1].size();
+//    int bubble_size = bubble.branches.size() + batchSize;
+//    int score_matrix3d_size = 2 * candidate_size * read_size * bubble_size;
+//
+//    return score_matrix3d_size;
+//
+////    int score_matrix_size = 5 * read_size * bubble_size;
+////    return score_matrix_size + score_matrix3d_size;
+//}
 
-    return score_matrix3d_size;
 
-//    int score_matrix_size = 5 * read_size * bubble_size;
-//    return score_matrix_size + score_matrix3d_size;
-}
-
-
-void BubbleProcessor::parallelWorker(const std::string outFile)
+void BubbleProcessor::parallelWorker(const std::string outFile, ScoreMemoryPool& memoryPool)
 {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -191,8 +212,8 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                               [](const std::string& s1, const std::string& s2)
                               {return s1.length() < s2.length();});
 
-                    int size = determineSize(*bubble);
-                    ScoreMemoryPool memoryPool(size);
+//                    int size = determineSize(*bubble);
+//                    ScoreMemoryPool memoryPool(size);
 
                     auto generalPolisherStart = std::chrono::high_resolution_clock::now();
                     _generalPolisher.polishBubble(*bubble,

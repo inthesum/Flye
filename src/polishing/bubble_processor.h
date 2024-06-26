@@ -28,11 +28,11 @@ public:
                     const std::string& hopoMatrixPath,
                     bool  showProgress, bool hopoEndabled,
                     int numThreads);
-    void polishAll(const std::string& inBubbles, const std::string& outConsensus);
+    void polishAll(const std::string& inBubbles, const std::string& outConsensus, const size_t maxSize);
     void enableVerboseOutput(const std::string& filename);
 
 private:
-    void parallelWorker(const std::string outFile);
+    void parallelWorker(const std::string outFile, ScoreMemoryPool& memoryPool);
     void cacheBubbles(int numBubbles);
     void writeBubbles(const std::vector<Bubble>& bubbles);
     void writeLog(const std::vector<Bubble>& bubbles);

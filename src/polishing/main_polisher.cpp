@@ -16,7 +16,7 @@
 bool parseArgs(int argc, char** argv, std::string& bubblesFile, 
 			   std::string& scoringMatrix, std::string& hopoMatrix,
 			   std::string& outConsensus, std::string& outVerbose,
-               std::string& logFile, int& numThreads, bool& quiet, bool& enableHopo)
+               std::string& logFile, int& numThreads, size_t& maxSize, bool& quiet, bool& enableHopo)
 {
 	auto printUsage = [argv]()
 	{
@@ -38,7 +38,9 @@ bool parseArgs(int argc, char** argv, std::string& bubblesFile,
                   << "  --log log_file\toutput log to file "
                   << "[default = not set] \n"
 				  << "  --threads num_threads\tnumber of parallel threads "
-				  << "[default = 1] \n";
+				  << "[default = 1] \n"
+                  << "  --size max_size\tmax memory allocation for each thread "
+                  << "[default = not set] \n";
 	};
 	
 	int optionIndex = 0;
@@ -50,7 +52,8 @@ bool parseArgs(int argc, char** argv, std::string& bubblesFile,
 		{"out", required_argument, 0, 0},
         {"log", required_argument, 0, 0},
         {"threads", required_argument, 0, 0},
-		{"debug", no_argument, 0, 0},
+        {"size", required_argument, 0, 0},
+        {"debug", no_argument, 0, 0},
 		{"quiet", no_argument, 0, 0},
 		{"enable-hopo", no_argument, 0, 0},
 		{0, 0, 0, 0}
@@ -64,6 +67,8 @@ bool parseArgs(int argc, char** argv, std::string& bubblesFile,
 		case 0:
 			if (!strcmp(longOptions[optionIndex].name, "threads"))
 				numThreads = atoi(optarg);
+            else if (!strcmp(longOptions[optionIndex].name, "size"))
+                maxSize = static_cast<size_t>(strtoull(optarg, nullptr, 10));
 			else if (!strcmp(longOptions[optionIndex].name, "debug"))
 				outVerbose = true;
 			else if (!strcmp(longOptions[optionIndex].name, "enable-hopo"))
@@ -105,14 +110,15 @@ int polisher_main(int argc, char* argv[])
 	std::string outConsensus;
 	std::string outVerbose;
     std::string logFile;
-    int  numThreads = 1;
+    int numThreads = 1;
+    size_t maxSize = 0;
 	bool quiet = false;
 	bool enableHopo = false;
     bool debugging = false;
 
     if (!parseArgs(argc, argv, bubblesFile, scoringMatrix,
 				   hopoMatrix, outConsensus, outVerbose,
-                   logFile, numThreads, quiet, enableHopo))
+                   logFile, numThreads, maxSize, quiet, enableHopo))
 		return 1;
 
     Logger::get().setDebugging(debugging);
@@ -128,7 +134,7 @@ int polisher_main(int argc, char* argv[])
 
     BubbleProcessor bp(scoringMatrix, hopoMatrix, !quiet, enableHopo, numThreads);
     if (!outVerbose.empty()) bp.enableVerboseOutput(outVerbose);
-    bp.polishAll(bubblesFile, outConsensus);
+    bp.polishAll(bubblesFile, outConsensus, maxSize);
 
     Logger::get().debug() << "Peak RAM usage: "
                           << getPeakRSS() / 1024 / 1024 / 1024 << " Gb";

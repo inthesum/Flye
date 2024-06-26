@@ -97,10 +97,10 @@ def _thread_worker(aln_reader, chunk_feeder, contigs_info, err_mode,
             for b in ctg_bubbles:
                 b.position += ctg_region.start
 
-            _output_bubbles(ctg_bubbles, out_stream)
+            max_size = _output_bubbles(ctg_bubbles, out_stream)
             results_queue.put((ctg_id, len(ctg_bubbles), num_long_bubbles,
                                num_empty, num_long_branch, aln_errors,
-                               mean_cov))
+                               mean_cov, max_size))
 
             del profile
             del ctg_bubbles
@@ -178,17 +178,19 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
     total_empty = 0
     total_aln_errors = []
     coverage_stats = defaultdict(list)
+    max_size = 0
 
     while not results_queue.empty():
         (ctg_id, num_bubbles, num_long_bubbles,
             num_empty, num_long_branch,
-            aln_errors, mean_coverage) = results_queue.get()
+            aln_errors, mean_coverage, size) = results_queue.get()
         total_long_bubbles += num_long_bubbles
         total_long_branches += num_long_branch
         total_empty += num_empty
         total_aln_errors.extend(aln_errors)
         total_bubbles += num_bubbles
         coverage_stats[ctg_id].append(mean_coverage)
+        max_size = max(max_size, size)
 
     for ctg in coverage_stats:
         coverage_stats[ctg] = int(sum(coverage_stats[ctg]) / len(coverage_stats[ctg]))
@@ -198,9 +200,9 @@ def make_bubbles(alignment_path, contigs_info, contigs_path,
     logger.debug("Split %d long bubbles", total_long_bubbles)
     logger.debug("Skipped %d empty bubbles", total_empty)
     logger.debug("Skipped %d bubbles with long branches", total_long_branches)
-    ###
+###
 
-    return coverage_stats, mean_aln_error
+    return coverage_stats, mean_aln_error, max_size
 
 
 def _output_bubbles(bubbles, out_stream):
@@ -211,8 +213,10 @@ def _output_bubbles(bubbles, out_stream):
     buffer = []
     bubble_count = 0
     flush_threshold = 1000
+    max_size = 0
 
     for bubble in bubbles:
+        read_size = 0
         if not bubble.branches:
             raise Exception("No branches in a bubble")
 
@@ -220,6 +224,12 @@ def _output_bubbles(bubbles, out_stream):
         buffer.append(f"{bubble.consensus}\n")
         for branch_id, branch in enumerate(bubble.branches):
             buffer.append(f">{branch_id}\n{branch}\n")
+            read_size = max(read_size, len(branch))
+
+        candidate_size = 10 * len(bubble.consensus)
+        bubble_size = len(bubble.branches) + 8
+        score_matrix3d_size = 2 * candidate_size * read_size * bubble_size
+        max_size = max(max_size, score_matrix3d_size)
 
         bubble_count += 1
 
@@ -234,6 +244,8 @@ def _output_bubbles(bubbles, out_stream):
         out_stream.writelines(buffer)
 
     out_stream.flush()
+
+    return max_size
 
 
 # def _output_bubbles(bubbles, out_stream):
