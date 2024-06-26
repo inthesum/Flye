@@ -4,13 +4,13 @@
 
 #include "general_polisher.h"
 
-constexpr size_t batchSize = 4;
-
 void GeneralPolisher::polishBubble(Bubble& bubble,
                                    int64_t& alignmentNum,
                                    int64_t& deletionNum,
                                    int64_t& insertionNum,
                                    int64_t& substitutionNum,
+                                   size_t batchSize,
+                                   ScoreMemoryPool& memoryPool,
                                    std::chrono::duration<double>& optimizeDuration,
                                    std::chrono::duration<double>& makeStepDuration,
                                    std::chrono::duration<double>& alignmentDuration,
@@ -22,7 +22,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 							const std::vector<std::string>& branches,
                             const size_t readsNum,
 							std::vector<StepInfo>& polishSteps,
-//                            ScoreMemoryPool& memoryPool,
+                            ScoreMemoryPool& memoryPool,
                             int64_t& alignmentNum,
                             int64_t& deletionNum,
                             int64_t& insertionNum,
@@ -34,19 +34,16 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
                             std::chrono::duration<double>& substitutionDuration)
 	{
 		std::string prevCandidate = candidate;
-        AlignmentAVX align(branches.size(), _subsMatrix, branches);
+        AlignmentAVX align(branches.size(), _subsMatrix, branches, memoryPool);
         size_t iterNum = 0;
 		while(true)
 		{
-//            memoryPool.reset();
-
             auto makeStepStart = std::chrono::high_resolution_clock::now();
 
             StepInfo rec = this->makeStep(prevCandidate,
                                           branches,
                                           readsNum,
                                           align,
-//                                          memoryPool,
                                           alignmentNum,
                                           deletionNum,
                                           insertionNum,
@@ -59,7 +56,9 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
             auto makeStepEnd = std::chrono::high_resolution_clock::now();
             makeStepDuration += makeStepEnd - makeStepStart;
 
-			polishSteps.push_back(rec);
+            memoryPool.reset();
+
+            polishSteps.push_back(rec);
 			if (prevCandidate == rec.sequence) break;
 			if (rec.score > 0)
 			{
@@ -80,10 +79,6 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
     const int PRE_POLISH = 5;
     std::string prePolished = bubble.candidate;
 
-    std::sort(bubble.branches.begin(), bubble.branches.end(),
-              [](const std::string& s1, const std::string& s2)
-              {return s1.length() < s2.length();});
-
     if (bubble.branches.size() > PRE_POLISH * 2)
     {
         size_t left = bubble.branches.size() / 2 - PRE_POLISH / 2;
@@ -100,15 +95,13 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
             for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
         }
 
-//        ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
-
         auto optimizeStart = std::chrono::high_resolution_clock::now();
 
         prePolished = optimize(prePolished,
                                extendedReads,
                                readsNum,
                                bubble.polishSteps,
-//                               memoryPool,
+                               memoryPool,
                                alignmentNum,
                                deletionNum,
                                insertionNum,
@@ -133,16 +126,13 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
         for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
     }
 
-
-//    ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
-
     auto optimizeStart = std::chrono::high_resolution_clock::now();
 
     bubble.candidate = optimize(prePolished,
                                 extendedReads,
                                 readsNum,
                                 bubble.polishSteps,
-//                                memoryPool,
+                                memoryPool,
                                 alignmentNum,
                                 deletionNum,
                                 insertionNum,
@@ -163,7 +153,6 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
                                    const std::vector<std::string>& branches,
                                    const size_t readsNum,
                                    AlignmentAVX& align,
-//                                   ScoreMemoryPool& memoryPool,
                                    int64_t& alignmentNum,
                                    int64_t& deletionNum,
                                    int64_t& insertionNum,
@@ -180,9 +169,6 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     auto alignmentStart = std::chrono::high_resolution_clock::now();
 
     AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum);
-//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, memoryPool);
-//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, alignmentDuration);
-//    AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum, memoryPool, alignmentDuration);
 
     stepResult.score = score;
     stepResult.sequence = candidate;
@@ -198,7 +184,6 @@ StepInfo GeneralPolisher::makeStep(const std::string& candidate,
     for (size_t pos = 0; pos < candidate.size(); ++pos)
     {
         AlnScoreType score = align.addDeletionAVX(pos + 1, readsNum);
-//        AlnScoreType score = align.addDeletionAVX(pos + 1, readsNum, deletionDuration);
 
         if (score > stepResult.score)
         {

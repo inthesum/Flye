@@ -18,6 +18,7 @@
 #include "utility.h"
 #include "../common/progress_bar.h"
 #include "dinucleotide_fixer_avx.h"
+#include "score_memory_pool.h"
 
 
 class BubbleProcessor

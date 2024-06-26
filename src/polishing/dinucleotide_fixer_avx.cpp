@@ -5,21 +5,20 @@
 #include "dinucleotide_fixer_avx.h"
 #include "alignment_score_only_avx.h"
 
-constexpr size_t batchSize = 4;
-
-void DinucleotideFixerAVX::fixBubble(Bubble& bubble) const
+void DinucleotideFixerAVX::fixBubble(Bubble& bubble, size_t batchSize, ScoreMemoryPool& memoryPool) const
 {
 	auto likelihood = [this](const std::string& candidate, 
 						     const std::vector<std::string>& branches,
-                             const size_t readsNum)
+                             const size_t readsNum,
+                             ScoreMemoryPool& memoryPool)
 	{
 //        Alignment align(branches.size(), _subsMatrix);
 //        AlnScoreType score = align.globalAlignment(candidate, branches);
-
-        AlignmentScoreOnlyAVX align(branches.size(), _subsMatrix, branches);
+        AlignmentScoreOnlyAVX align(branches.size(), _subsMatrix, branches, memoryPool);
         AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum);
+        memoryPool.reset();
 
-		return score;
+        return score;
 	};
 
 	auto runPair = this->getDinucleotideRuns(bubble.candidate);
@@ -39,10 +38,9 @@ void DinucleotideFixerAVX::fixBubble(Bubble& bubble) const
         std::string lastRead = bubble.branches[readsNum - 1];
         for (size_t i = 0; i < extendedReadsNum; i++) bubble.branches.push_back(lastRead);
     }
-
-	AlnScoreType normalScore = likelihood(bubble.candidate, bubble.branches, readsNum);
-	AlnScoreType increasedScore = likelihood(increased, bubble.branches, readsNum);
-	AlnScoreType decreasedScore = likelihood(decreased, bubble.branches, readsNum);
+	AlnScoreType normalScore = likelihood(bubble.candidate, bubble.branches, readsNum, memoryPool);
+    AlnScoreType increasedScore = likelihood(increased, bubble.branches, readsNum, memoryPool);
+    AlnScoreType decreasedScore = likelihood(decreased, bubble.branches, readsNum, memoryPool);
 
     for (size_t i = 0; i < extendedReadsNum; i++) bubble.branches.pop_back();
 
@@ -71,8 +69,7 @@ void DinucleotideFixerAVX::fixBubble(Bubble& bubble) const
 	}
 }
 
-std::pair<int, int>
-DinucleotideFixerAVX::getDinucleotideRuns(const std::string& sequence) const
+std::pair<int, int> DinucleotideFixerAVX::getDinucleotideRuns(const std::string& sequence) const
 {
 	int maxRun = 0;
 	int maxPos = 0;

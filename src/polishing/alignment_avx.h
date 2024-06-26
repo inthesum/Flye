@@ -21,27 +21,15 @@
 class AlignmentAVX {
 
 public:
-    AlignmentAVX(size_t size, const SubstitutionMatrix &sm, const std::vector<std::string> &reads);
+    AlignmentAVX(size_t size, const SubstitutionMatrix &sm, const std::vector<std::string> &reads, ScoreMemoryPool& memoryPool);
     ~AlignmentAVX();
 
     AlnScoreType globalAlignmentAVX(const std::string &consensus,
-                                    const std::vector<std::string> &reads,
+                                    const std::vector <std::string> &reads,
                                     const size_t readsNum);
-//    AlnScoreType globalAlignmentAVX(const std::string &consensus,
-//                                    const std::vector <std::string> &reads,
-//                                    const size_t readsNum,
-//                                    ScoreMemoryPool& memoryPool);
-//    AlnScoreType globalAlignmentAVX(const std::string &consensus,
-//                                    const std::vector <std::string> &reads,
-//                                    const size_t readsNum,
-////                                    ScoreMemoryPool& memoryPool,
-//                                    std::chrono::duration<double>& alignmentDuration);
 
     AlnScoreType addDeletionAVX(unsigned int letterIndex,
                                 const size_t readsNum);
-//    AlnScoreType addDeletionAVX(unsigned int letterIndex,
-//                                const size_t readsNum,
-//                                std::chrono::duration<double>& deletionDuration) const;
 
     AlnScoreType addSubsAndInsertAVX(size_t frontRow, size_t revRow,
                                      char base, const std::vector<std::string> &reads,
@@ -56,6 +44,7 @@ public:
                                  const size_t readsNum);
 
 private:
+    ScoreMemoryPool& memoryPool;
     std::vector<ScoreMatrix3d> _forwardScores;
     std::vector<ScoreMatrix3d> _reverseScores;
     const SubstitutionMatrix &_subsMatrix;

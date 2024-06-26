@@ -7,6 +7,7 @@
 // When 8 is used, the compiler interprets the value as a suggestion, and
 // you may not get the requested 8-byte alignment, depending on various heuristics.
 // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/align-001.html
+#pragma once
 
 #include <cstdlib>
 #include <stdexcept>
@@ -35,7 +36,7 @@ public:
 		return *this;
 	}
 
-    ScoreMatrix(AlnScoreType* data, size_t rows, size_t cols): _data(data), _rows(rows), _cols(cols) {}
+//    ScoreMatrix(AlnScoreType* data, size_t rows, size_t cols): _data(data), _rows(rows), _cols(cols) {}
 	ScoreMatrix(size_t rows, size_t cols):
 		_rows(rows), _cols(cols)
 	{

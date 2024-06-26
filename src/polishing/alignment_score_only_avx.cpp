@@ -6,9 +6,10 @@
 
 constexpr size_t batchSize = 4; // Use constexpr for batch size
 
-AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatrix& sm, const std::vector <std::string> &reads):
+AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatrix& sm, const std::vector <std::string> &reads, ScoreMemoryPool& memoryPool):
     _subsMatrix(sm),
-    batchNum(size/batchSize)
+    batchNum(size/batchSize),
+    memoryPool(memoryPool)
 {
     _subsScoresA.resize(batchNum);
     _subsScoresC.resize(batchNum);
@@ -17,17 +18,30 @@ AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatr
     _subsScores_.resize(batchNum);
 
     _readsSize = (AlnScoreType*)_mm_malloc(size * sizeof(AlnScoreType), 32);
+//    _readsSize = memoryPool.allocate(size);
 
     for (size_t batchId = 0; batchId < batchNum; batchId++)
     {
         const size_t readId = batchId * batchSize;
         size_t x = reads[readId + batchSize - 1].size();
         size_t y = batchSize;
+
         ScoreMatrix subsScoresA(x, y);
         ScoreMatrix subsScoresC(x, y);
         ScoreMatrix subsScoresG(x, y);
         ScoreMatrix subsScoresT(x, y);
         ScoreMatrix subsScores_(x, y);
+
+//        AlnScoreType* ptr = memoryPool.allocate(x * y);
+//        ScoreMatrix subsScoresA(ptr, x, y);
+//        ptr = memoryPool.allocate(x * y);
+//        ScoreMatrix subsScoresC(ptr, x, y);
+//        ptr = memoryPool.allocate(x * y);
+//        ScoreMatrix subsScoresG(ptr, x, y);
+//        ptr = memoryPool.allocate(x * y);
+//        ScoreMatrix subsScoresT(ptr, x, y);
+//        ptr = memoryPool.allocate(x * y);
+//        ScoreMatrix subsScores_(ptr, x, y);
 
         for(size_t b = 0; b < batchSize; b++) {
             const std::string w = reads[readId + b];
@@ -67,9 +81,9 @@ AlnScoreType AlignmentScoreOnlyAVX::globalAlignmentAVX(const std::string& consen
         size_t y = reads[readId + batchSize - 1].size() + 1;
         size_t z = batchSize;
 
-        ScoreMatrix3d scoreMatrix(x, y, z);
-//        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
-//        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
+//        ScoreMatrix3d scoreMatrix(x, y, z);
+        AlnScoreType* ptr = memoryPool.allocate(x * y * z);
+        ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
         const ScoreMatrix& leftSubsMatrix = _subsScores_[batchId];
         const ScoreMatrix& crossSubsMatrixA = _subsScoresA[batchId];

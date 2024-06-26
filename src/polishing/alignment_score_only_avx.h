@@ -15,12 +15,13 @@
 #include "score_matrix.h"
 #include "score_matrix3d.h"
 #include "subs_matrix.h"
+#include "score_memory_pool.h"
 
 
 class AlignmentScoreOnlyAVX {
 
 public:
-    AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatrix &sm, const std::vector<std::string> &reads);
+    AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatrix &sm, const std::vector<std::string> &reads, ScoreMemoryPool& memoryPool);
     ~AlignmentScoreOnlyAVX();
 
     AlnScoreType globalAlignmentAVX(const std::string &consensus,
@@ -38,6 +39,7 @@ private:
     std::vector<ScoreMatrix> _subsScores_;
 
     const size_t batchNum;
+    ScoreMemoryPool& memoryPool;
 
     __m256i mm256_max_epi64(__m256i a, __m256i b) {
         __m256i cmp_mask = _mm256_cmpgt_epi64(a, b);

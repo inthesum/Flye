@@ -9,6 +9,7 @@
 #include "bubble.h"
 #include "subs_matrix.h"
 #include "alignment_avx.h"
+#include "score_memory_pool.h"
 
 class GeneralPolisher
 {
@@ -17,12 +18,13 @@ public:
 		_subsMatrix(subsMatrix)
 	{}
 
-    void polishBubble(Bubble& bubble) const;
     void polishBubble(Bubble& bubble,
                       int64_t& alignmentNum,
                       int64_t& deletionNum,
                       int64_t& insertionNum,
                       int64_t& substitutionNum,
+                      size_t batchSize,
+                      ScoreMemoryPool& memoryPool,
                       std::chrono::duration<double>& optimizeDuration,
                       std::chrono::duration<double>& makeStepDuration,
                       std::chrono::duration<double>& alignmentDuration,
@@ -31,14 +33,10 @@ public:
                       std::chrono::duration<double>& substitutionDuration) const;
 
 private:
-	StepInfo makeStep(const std::string& candidate, 
-					  const std::vector<std::string>& branches,
-					  AlignmentAVX& align) const;
     StepInfo makeStep(const std::string& candidate,
                       const std::vector<std::string>& branches,
                       const size_t readsNum,
                       AlignmentAVX& align,
-//                      ScoreMemoryPool& memoryPool,
                       int64_t& alignmentNum,
                       int64_t& deletionNum,
                       int64_t& insertionNum,

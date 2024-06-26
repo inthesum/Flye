@@ -68,6 +68,20 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
     if (_showProgress) _progress.setDone();
 }
 
+constexpr size_t batchSize = 4;
+
+int determineSize(const Bubble& bubble) {
+    int candidate_size = 2 * bubble.candidate.size();
+    int read_size = bubble.branches[bubble.branches.size() - 1].size();
+    int bubble_size = bubble.branches.size() + batchSize;
+    int score_matrix3d_size = 2 * candidate_size * read_size * bubble_size;
+
+    return score_matrix3d_size;
+
+//    int score_matrix_size = 5 * read_size * bubble_size;
+//    return score_matrix_size + score_matrix3d_size;
+}
+
 
 void BubbleProcessor::parallelWorker(const std::string outFile)
 {
@@ -173,12 +187,21 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                 {
                     numBubblesPolished++;
 
+                    std::sort(bubble->branches.begin(), bubble->branches.end(),
+                              [](const std::string& s1, const std::string& s2)
+                              {return s1.length() < s2.length();});
+
+                    int size = determineSize(*bubble);
+                    ScoreMemoryPool memoryPool(size);
+
                     auto generalPolisherStart = std::chrono::high_resolution_clock::now();
                     _generalPolisher.polishBubble(*bubble,
                                                   alignmentNum,
                                                   deletionNum,
                                                   insertionNum,
                                                   substitutionNum,
+                                                  batchSize,
+                                                  memoryPool,
                                                   optimizeDuration,
                                                   makeStepDuration,
                                                   alignmentDuration,
@@ -197,7 +220,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
                     homoPolisherDuration += homoPolisherEnd - homoPolisherStart;
 
                     auto fixerStart = std::chrono::high_resolution_clock::now();
-                    _dinucFixer.fixBubble(*bubble);
+                    _dinucFixer.fixBubble(*bubble, batchSize, memoryPool);
                     auto fixerEnd = std::chrono::high_resolution_clock::now();
                     fixerDuration += fixerEnd - fixerStart;
                 }

@@ -6,6 +6,7 @@
 
 #include "subs_matrix.h"
 #include "bubble.h"
+#include "score_memory_pool.h"
 
 class DinucleotideFixerAVX
 {
@@ -13,7 +14,9 @@ public:
 	DinucleotideFixerAVX(const SubstitutionMatrix& subsMatrix):
 		_subsMatrix(subsMatrix)
 	{}
-	void fixBubble(Bubble& bubble) const;
+	void fixBubble(Bubble& bubble,
+                   size_t batchSize,
+                   ScoreMemoryPool& memoryPool) const;
 
 private:
 	std::pair<int, int> getDinucleotideRuns(const std::string& sequence) const;
