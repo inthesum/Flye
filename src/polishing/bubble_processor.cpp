@@ -71,7 +71,7 @@ void BubbleProcessor::polishAll(const std::string& inBubbles,
 constexpr size_t batchSize = 4;
 
 int determineSize(const Bubble& bubble) {
-    int candidate_size = 2 * bubble.candidate.size();
+    int candidate_size = 10 * bubble.candidate.size();
     int read_size = bubble.branches[bubble.branches.size() - 1].size();
     int bubble_size = bubble.branches.size() + batchSize;
     int score_matrix3d_size = 2 * candidate_size * read_size * bubble_size;
