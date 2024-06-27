@@ -12,8 +12,6 @@ void DinucleotideFixerAVX::fixBubble(Bubble& bubble, size_t batchSize, ScoreMemo
                              const size_t readsNum,
                              ScoreMemoryPool& memoryPool)
 	{
-//        Alignment align(branches.size(), _subsMatrix);
-//        AlnScoreType score = align.globalAlignment(candidate, branches);
         AlignmentScoreOnlyAVX align(branches.size(), _subsMatrix, branches, memoryPool);
         AlnScoreType score = align.globalAlignmentAVX(candidate, branches, readsNum);
         memoryPool.reset();

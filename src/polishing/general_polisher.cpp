@@ -35,6 +35,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 	{
 		std::string prevCandidate = candidate;
         AlignmentAVX align(branches.size(), _subsMatrix, branches, memoryPool);
+        memoryPool.set_boundary();
         size_t iterNum = 0;
 		while(true)
 		{
@@ -56,7 +57,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
             auto makeStepEnd = std::chrono::high_resolution_clock::now();
             makeStepDuration += makeStepEnd - makeStepStart;
 
-            memoryPool.reset();
+            memoryPool.reset_to_boundary();
 
             polishSteps.push_back(rec);
 			if (prevCandidate == rec.sequence) break;
@@ -72,6 +73,8 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 			}
 			prevCandidate = rec.sequence;
 		}
+        memoryPool.reset();
+        
 		return prevCandidate;
 	};
 

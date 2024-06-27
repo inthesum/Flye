@@ -36,18 +36,18 @@ public:
 		return *this;
 	}
 
-//    ScoreMatrix(AlnScoreType* data, size_t rows, size_t cols): _data(data), _rows(rows), _cols(cols) {}
-	ScoreMatrix(size_t rows, size_t cols):
-		_rows(rows), _cols(cols)
-	{
-		if (!rows || !cols)
-			throw std::runtime_error("Zero ScoreMatrix dimension");
-        _data = (AlnScoreType*)_mm_malloc(rows * cols * sizeof(AlnScoreType), 32);
-	}
-	~ScoreMatrix()
-	{
-        if (_data) _mm_free(_data);
-	}
+    ScoreMatrix(AlnScoreType* data, size_t rows, size_t cols): _data(data), _rows(rows), _cols(cols) {}
+//	ScoreMatrix(size_t rows, size_t cols):
+//		_rows(rows), _cols(cols)
+//	{
+//		if (!rows || !cols)
+//			throw std::runtime_error("Zero ScoreMatrix dimension");
+//        _data = (AlnScoreType*)_mm_malloc(rows * cols * sizeof(AlnScoreType), 32);
+//	}
+//	~ScoreMatrix()
+//	{
+//        if (_data) _mm_free(_data);
+//	}
 
 	AlnScoreType& at(size_t row, size_t col) {return _data[row * _cols + col];}
 	const AlnScoreType& at(size_t row, size_t col) const {return _data[row * _cols + col];}

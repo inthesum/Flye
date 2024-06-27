@@ -8,7 +8,7 @@
 class ScoreMemoryPool {
 public:
     ScoreMemoryPool(AlnScoreType* start, size_t capacity)
-            : _start(start), _capacity(capacity), _usage(0) {
+            : _start(start), _capacity(capacity), _usage(0), _boundary(0) {
         if (!_start) {
             throw std::bad_alloc(); // Handle allocation failure
         }
@@ -25,13 +25,23 @@ public:
         return data;
     }
 
+    void set_boundary() {
+        _boundary = _usage;
+    }
+
+    void reset_to_boundary() {
+        _usage = _boundary;
+    }
+
     void reset() {
+        _boundary = 0;
         _usage = 0;
     }
 
 private:
     size_t _capacity;
     size_t _usage;
+    size_t _boundary;
     AlnScoreType* _start;
 };
 

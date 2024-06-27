@@ -229,7 +229,8 @@ def _output_bubbles(bubbles, out_stream):
         candidate_size = 10 * len(bubble.consensus)
         bubble_size = len(bubble.branches) + 8
         score_matrix3d_size = 2 * candidate_size * read_size * bubble_size
-        max_size = max(max_size, score_matrix3d_size)
+        score_matrix2d_size = 5 * read_size * bubble_size
+        max_size = max(max_size, score_matrix2d_size + score_matrix3d_size + bubble_size)
 
         bubble_count += 1
 

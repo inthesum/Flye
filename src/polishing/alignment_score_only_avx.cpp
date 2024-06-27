@@ -17,8 +17,8 @@ AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatr
     _subsScoresT.resize(batchNum);
     _subsScores_.resize(batchNum);
 
-    _readsSize = (AlnScoreType*)_mm_malloc(size * sizeof(AlnScoreType), 32);
-//    _readsSize = memoryPool.allocate(size);
+//    _readsSize = (AlnScoreType*)_mm_malloc(size * sizeof(AlnScoreType), 32);
+    _readsSize = memoryPool.allocate(size);
 
     for (size_t batchId = 0; batchId < batchNum; batchId++)
     {
@@ -26,22 +26,22 @@ AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatr
         size_t x = reads[readId + batchSize - 1].size();
         size_t y = batchSize;
 
-        ScoreMatrix subsScoresA(x, y);
-        ScoreMatrix subsScoresC(x, y);
-        ScoreMatrix subsScoresG(x, y);
-        ScoreMatrix subsScoresT(x, y);
-        ScoreMatrix subsScores_(x, y);
+//        ScoreMatrix subsScoresA(x, y);
+//        ScoreMatrix subsScoresC(x, y);
+//        ScoreMatrix subsScoresG(x, y);
+//        ScoreMatrix subsScoresT(x, y);
+//        ScoreMatrix subsScores_(x, y);
 
-//        AlnScoreType* ptr = memoryPool.allocate(x * y);
-//        ScoreMatrix subsScoresA(ptr, x, y);
-//        ptr = memoryPool.allocate(x * y);
-//        ScoreMatrix subsScoresC(ptr, x, y);
-//        ptr = memoryPool.allocate(x * y);
-//        ScoreMatrix subsScoresG(ptr, x, y);
-//        ptr = memoryPool.allocate(x * y);
-//        ScoreMatrix subsScoresT(ptr, x, y);
-//        ptr = memoryPool.allocate(x * y);
-//        ScoreMatrix subsScores_(ptr, x, y);
+        AlnScoreType* ptr = memoryPool.allocate(x * y);
+        ScoreMatrix subsScoresA(ptr, x, y);
+        ptr = memoryPool.allocate(x * y);
+        ScoreMatrix subsScoresC(ptr, x, y);
+        ptr = memoryPool.allocate(x * y);
+        ScoreMatrix subsScoresG(ptr, x, y);
+        ptr = memoryPool.allocate(x * y);
+        ScoreMatrix subsScoresT(ptr, x, y);
+        ptr = memoryPool.allocate(x * y);
+        ScoreMatrix subsScores_(ptr, x, y);
 
         for(size_t b = 0; b < batchSize; b++) {
             const std::string w = reads[readId + b];
@@ -63,7 +63,7 @@ AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatr
 }
 
 AlignmentScoreOnlyAVX::~AlignmentScoreOnlyAVX() {
-    _mm_free(_readsSize);
+//    _mm_free(_readsSize);
 }
 
 
