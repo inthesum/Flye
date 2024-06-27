@@ -215,6 +215,12 @@ def _output_bubbles(bubbles, out_stream):
     flush_threshold = 1000
     max_size = 0
 
+    def calculate_extended_reads_num(reads_num, batch_size=4):
+        if reads_num % batch_size != 0:
+            return reads_num + batch_size - reads_num % batch_size
+        else:
+            return reads_num
+
     for bubble in bubbles:
         read_size = 0
         if not bubble.branches:
@@ -226,8 +232,8 @@ def _output_bubbles(bubbles, out_stream):
             buffer.append(f">{branch_id}\n{branch}\n")
             read_size = max(read_size, len(branch))
 
-        candidate_size = 10 * len(bubble.consensus)
-        bubble_size = len(bubble.branches) + 8
+        candidate_size = 5 * len(bubble.consensus)
+        bubble_size = calculate_extended_reads_num(len(bubble.branches))
         score_matrix3d_size = 2 * candidate_size * read_size * bubble_size
         score_matrix2d_size = 5 * read_size * bubble_size
         max_size = max(max_size, score_matrix2d_size + score_matrix3d_size + bubble_size)

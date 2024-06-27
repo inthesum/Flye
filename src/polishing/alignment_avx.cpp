@@ -19,7 +19,6 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
     _subsScoresT.resize(batchNum);
     _subsScores_.resize(batchNum);
 
-//    _readsSize = (AlnScoreType*)_mm_malloc(size * sizeof(AlnScoreType), 32);
     _readsSize = memoryPool.allocate(size);
 
     for (size_t batchId = 0; batchId < batchNum; batchId++)
@@ -27,12 +26,6 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
         const size_t readId = batchId * batchSize;
         size_t x = reads[readId + batchSize - 1].size();
         size_t y = batchSize;
-
-//        ScoreMatrix subsScoresA(x, y);
-//        ScoreMatrix subsScoresC(x, y);
-//        ScoreMatrix subsScoresG(x, y);
-//        ScoreMatrix subsScoresT(x, y);
-//        ScoreMatrix subsScores_(x, y);
 
         AlnScoreType* ptr = memoryPool.allocate(x * y);
         ScoreMatrix subsScoresA(ptr, x, y);
@@ -64,9 +57,7 @@ AlignmentAVX::AlignmentAVX(size_t size, const SubstitutionMatrix& sm, const std:
     }
 }
 
-AlignmentAVX::~AlignmentAVX() {
-//    _mm_free(_readsSize);
-}
+AlignmentAVX::~AlignmentAVX() {}
 
 
 AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
@@ -83,7 +74,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         size_t y = reads[readId + batchSize - 1].size() + 1;
         size_t z = batchSize;
 
-//        ScoreMatrix3d scoreMatrix(x, y, z);
         AlnScoreType* ptr = memoryPool.allocate(x * y * z);
         ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
@@ -139,7 +129,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             }
             const ScoreMatrix& crossSubsMatrix = *crossSubsMatrixPtr;
 
-//            auto alignmentStart = std::chrono::high_resolution_clock::now();
             const size_t shortestCol = _readsSize[readId];
             for (size_t j = 1; j < shortestCol; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
@@ -186,9 +175,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 
                 _mm256_store_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
             }
-
-//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
-//            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
         alignas(32) AlnScoreType scores[batchSize];
@@ -211,7 +197,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
         size_t y = reads[readId+batchSize-1].size() + 1;
         size_t z = batchSize;
 
-//        ScoreMatrix3d scoreMatrix(x, y, z);
         AlnScoreType* ptr = memoryPool.allocate(x * y * z);
         ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
@@ -267,8 +252,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             }
             const ScoreMatrix& crossSubsMatrix = *crossSubsMatrixPtr;
 
-//            auto alignmentStart = std::chrono::high_resolution_clock::now();
-
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
             const size_t shortestCol = _readsSize[readId];
@@ -315,9 +298,6 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
 
                 _mm256_store_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex - z), score);
             }
-
-//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
-//            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
         _reverseScores[batchId] = std::move(scoreMatrix);
@@ -350,8 +330,6 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
         AlnScoreType maxVal = std::numeric_limits<AlnScoreType>::lowest();
         __m256i _maxVal = _mm256_set1_epi64x(maxVal);
 
-//        auto deletionStart = std::chrono::high_resolution_clock::now();
-
         const size_t shortestCol = _readsSize[readId];
         for (size_t col = 0; col < shortestCol; ++col)
         {
@@ -360,9 +338,6 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
             _maxVal = mm256_max_epi64(_maxVal, sum);
         }
-
-//        auto deletionEnd = std::chrono::high_resolution_clock::now();
-//        deletionDuration += deletionEnd - deletionStart;
 
         // Deal with various reads' length
         // _readsSize[readId] -> _readsSize[readId + batchSize - 1]

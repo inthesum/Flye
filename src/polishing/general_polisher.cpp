@@ -74,7 +74,7 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
 			prevCandidate = rec.sequence;
 		}
         memoryPool.reset();
-        
+
 		return prevCandidate;
 	};
 

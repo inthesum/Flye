@@ -17,7 +17,6 @@ AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatr
     _subsScoresT.resize(batchNum);
     _subsScores_.resize(batchNum);
 
-//    _readsSize = (AlnScoreType*)_mm_malloc(size * sizeof(AlnScoreType), 32);
     _readsSize = memoryPool.allocate(size);
 
     for (size_t batchId = 0; batchId < batchNum; batchId++)
@@ -25,12 +24,6 @@ AlignmentScoreOnlyAVX::AlignmentScoreOnlyAVX(size_t size, const SubstitutionMatr
         const size_t readId = batchId * batchSize;
         size_t x = reads[readId + batchSize - 1].size();
         size_t y = batchSize;
-
-//        ScoreMatrix subsScoresA(x, y);
-//        ScoreMatrix subsScoresC(x, y);
-//        ScoreMatrix subsScoresG(x, y);
-//        ScoreMatrix subsScoresT(x, y);
-//        ScoreMatrix subsScores_(x, y);
 
         AlnScoreType* ptr = memoryPool.allocate(x * y);
         ScoreMatrix subsScoresA(ptr, x, y);
@@ -81,7 +74,6 @@ AlnScoreType AlignmentScoreOnlyAVX::globalAlignmentAVX(const std::string& consen
         size_t y = reads[readId + batchSize - 1].size() + 1;
         size_t z = batchSize;
 
-//        ScoreMatrix3d scoreMatrix(x, y, z);
         AlnScoreType* ptr = memoryPool.allocate(x * y * z);
         ScoreMatrix3d scoreMatrix(ptr, x, y, z);
 
@@ -137,7 +129,6 @@ AlnScoreType AlignmentScoreOnlyAVX::globalAlignmentAVX(const std::string& consen
             }
             const ScoreMatrix& crossSubsMatrix = *crossSubsMatrixPtr;
 
-//            auto alignmentStart = std::chrono::high_resolution_clock::now();
             const size_t shortestCol = _readsSize[readId];
             for (size_t j = 1; j < shortestCol; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
@@ -184,9 +175,6 @@ AlnScoreType AlignmentScoreOnlyAVX::globalAlignmentAVX(const std::string& consen
 
                 _mm256_store_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex + z), score);
             }
-
-//            auto alignmentEnd = std::chrono::high_resolution_clock::now();
-//            alignmentDuration += alignmentEnd - alignmentStart;
         }
 
         alignas(32) AlnScoreType scores[batchSize];
