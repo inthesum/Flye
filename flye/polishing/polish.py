@@ -133,7 +133,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         logger.info("Correcting bubbles")
         _run_polish_bin(bubbles_file, subs_matrix, hopo_matrix,
                         consensus_out, num_threads, output_progress, use_hopo, log_file)
-        polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out, num_threads)
+        polished_fasta, polished_lengths, bubble_coverages = _compose_sequence(consensus_out)
         fp.write_fasta_dict(polished_fasta, polished_file)
 
         end_time = time.time()
