@@ -1,7 +1,4 @@
-#include <cstdlib>
 #include <stdexcept>
-#include <cassert>
-#include <vector>
 
 #include <immintrin.h>
 #include "subs_matrix.h"
@@ -34,7 +31,7 @@ public:
     {
         if (!rows || !cols || !depth)
             throw std::runtime_error("Zero matrix dimension");
-        _data = (AlnScoreType*)_mm_malloc(rows * cols * depth * sizeof(AlnScoreType), 32);
+        _data = (AlnScoreType*)_mm_malloc(rows * cols * depth * sizeof(AlnScoreType), 64);
     }
     ~ScoreMatrix3d()
     {

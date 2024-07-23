@@ -5,7 +5,7 @@
 #include "dinucleotide_fixer_avx.h"
 #include "alignment_score_only_avx.h"
 
-constexpr size_t batchSize = 4;
+constexpr size_t batchSize = 8;
 
 void DinucleotideFixerAVX::fixBubble(Bubble& bubble) const
 {

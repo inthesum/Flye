@@ -4,7 +4,7 @@
 
 #include "general_polisher.h"
 
-constexpr size_t batchSize = 4;
+constexpr size_t batchSize = 8;
 
 void GeneralPolisher::polishBubble(Bubble& bubble,
                                    int64_t& alignmentNum,
@@ -132,7 +132,6 @@ void GeneralPolisher::polishBubble(Bubble& bubble,
         std::string lastRead = bubble.branches[readsNum - 1];
         for (size_t i = 0; i < extendedReadsNum; i++) extendedReads.push_back(lastRead);
     }
-
 
 //    ScoreMemoryPool memoryPool(4 * prePolished.size() * lastRead.size() * extendedReads.size());
 
