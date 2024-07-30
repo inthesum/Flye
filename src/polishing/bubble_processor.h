@@ -52,7 +52,8 @@ private:
     bool 					            _showProgress;
     bool					            _hopoEnabled;
 
-    int                                 _batchSize = 100000;
+    const int                           BUBBLES_CACHE = 100;
+    int                                 _batchSize = 1;
     bool                                _done = false;
     const int                           _numThreads;
 };

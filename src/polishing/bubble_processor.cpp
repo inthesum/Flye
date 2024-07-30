@@ -118,7 +118,7 @@ void BubbleProcessor::parallelWorker(const std::string outFile)
         {
             if (!_done) {
                 auto cacheBubblesStart = std::chrono::high_resolution_clock::now();
-                this->cacheBubbles(_batchSize * _numThreads);
+                this->cacheBubbles(_batchSize * BUBBLES_CACHE);
                 auto cacheBubblesEnd = std::chrono::high_resolution_clock::now();
                 cacheBubblesDuration += cacheBubblesEnd - cacheBubblesStart;
 
@@ -289,7 +289,7 @@ void BubbleProcessor::cacheBubbles(int maxRead)
     if(readBubbles != maxRead) {
         std::cout << std::endl;
         std::cout << "current batch size: " << _batchSize << std::endl;
-        _batchSize = readBubbles / _numThreads + 1;
+        _batchSize = readBubbles / BUBBLES_CACHE + 1;
         std::cout << "new batch size: " << _batchSize << std::endl;
 
         _done = true;
