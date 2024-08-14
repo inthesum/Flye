@@ -142,6 +142,14 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             for (size_t j = 1; j < shortestCol; j++, leftScoreIndex += z, crossScoreIndex += z,
                                            leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
+                if (j + 2 < shortestCol) {  // Prefetch two iterations ahead
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + leftScoreIndex + 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + crossScoreIndex + 2 * z), _MM_HINT_T0);
+
+                    _mm_prefetch(reinterpret_cast<const char*>(leftSubsMatrix.data() + leftSubScoreIndex + 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(crossSubsMatrix.data() + crossSubScoreIndex + 2 * z), _MM_HINT_T0);
+                }
+
                 __m256i leftScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
                 __m256i leftSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
                 __m256i left = _mm256_add_epi64(leftScore, leftSubScore);
@@ -162,8 +170,16 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             // Deal with various reads' length
             // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
             for (size_t j = shortestCol; j < y; j++, leftScoreIndex += z, crossScoreIndex += z,
-                                           leftSubScoreIndex += z, crossSubScoreIndex += z)
+                                                     leftSubScoreIndex += z, crossSubScoreIndex += z)
             {
+                if (j + 2 < y) {  // Prefetch two iterations ahead
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + leftScoreIndex + 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + crossScoreIndex + 2 * z), _MM_HINT_T0);
+
+                    _mm_prefetch(reinterpret_cast<const char*>(leftSubsMatrix.data() + leftSubScoreIndex + 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(crossSubsMatrix.data() + crossSubScoreIndex + 2 * z), _MM_HINT_T0);
+                }
+
                 __m256i leftScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + leftScoreIndex));
                 __m256i leftSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + leftSubScoreIndex));
                 __m256i left = _mm256_add_epi64(leftScore, leftSubScore);
@@ -273,6 +289,14 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             for (size_t j = y - 1; j >= shortestCol; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
+                if (j - 2 >= shortestCol) {  // Prefetch two iterations ahead
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + rightScoreIndex - 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + crossScoreIndex - 2 * z), _MM_HINT_T0);
+
+                    _mm_prefetch(reinterpret_cast<const char*>(leftSubsMatrix.data() + rightSubScoreIndex - 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(crossSubsMatrix.data() + crossSubScoreIndex - 2 * z), _MM_HINT_T0);
+                }
+
                 __m256i rightScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
                 __m256i rightSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
                 __m256i right = _mm256_add_epi64(rightScore, rightSubScore);
@@ -297,6 +321,14 @@ AlnScoreType AlignmentAVX::globalAlignmentAVX(const std::string& consensus,
             for (size_t j = shortestCol - 1; j >= 1; j--, rightScoreIndex -= z, crossScoreIndex -= z,
                                                 rightSubScoreIndex -= z, crossSubScoreIndex -= z)
             {
+                if (j - 2 >= 1) {  // Prefetch two iterations ahead
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + rightScoreIndex - 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(scoreMatrix.data() + crossScoreIndex - 2 * z), _MM_HINT_T0);
+
+                    _mm_prefetch(reinterpret_cast<const char*>(leftSubsMatrix.data() + rightSubScoreIndex - 2 * z), _MM_HINT_T0);
+                    _mm_prefetch(reinterpret_cast<const char*>(crossSubsMatrix.data() + crossSubScoreIndex - 2 * z), _MM_HINT_T0);
+                }
+
                 __m256i rightScore = _mm256_load_si256((__m256i*)(scoreMatrix.data() + rightScoreIndex));
                 __m256i rightSubScore = _mm256_load_si256((__m256i*)(leftSubsMatrix.data() + rightSubScoreIndex));
                 __m256i right = _mm256_add_epi64(rightScore, rightSubScore);
@@ -356,6 +388,12 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
         const size_t shortestCol = _readsSize[readId];
         for (size_t col = 0; col < shortestCol; ++col)
         {
+            // Prefetch the next cache line for both front and reverse pointers
+            if (col + 2 < shortestCol) {  // Prefetch two iterations ahead
+                _mm_prefetch(reinterpret_cast<const char*>(frontPtr + (col + 2) * z), _MM_HINT_T0);
+                _mm_prefetch(reinterpret_cast<const char*>(reversePtr + (col + 2) * z), _MM_HINT_T0);
+            }
+
             __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr + col * z));
             __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr + col * z));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
@@ -370,6 +408,12 @@ AlnScoreType AlignmentAVX::addDeletionAVX(unsigned int letterIndex, const size_t
         __m256i _cols = _mm256_load_si256((__m256i*)(_readsSize + readId));
         for (size_t col = shortestCol; col < y; ++col)
         {
+            // Prefetch the next cache line for both front and reverse pointers
+            if (col + 2 < y) {  // Prefetch two iterations ahead
+                _mm_prefetch(reinterpret_cast<const char*>(frontPtr + (col + 2) * z), _MM_HINT_T0);
+                _mm_prefetch(reinterpret_cast<const char*>(reversePtr + (col + 2) * z), _MM_HINT_T0);
+            }
+
             __m256i forwardScore = _mm256_load_si256((__m256i*)(frontPtr + col * z));
             __m256i reverseScore = _mm256_load_si256((__m256i*)(reversePtr + col * z));
             __m256i sum = _mm256_add_epi64(forwardScore, reverseScore);
@@ -473,6 +517,13 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         const size_t shortestCol = _readsSize[readId];
         for (size_t col = 0; col < shortestCol; ++col)
         {
+            // Prefetch the next cache line for the following pointers
+            if (col + 2 < shortestCol) {  // Prefetch two iterations ahead
+                _mm_prefetch(reinterpret_cast<const char*>(subPtr + (col + 2) * z), _MM_HINT_T0);
+                _mm_prefetch(reinterpret_cast<const char*>(frontPtr + (col + 2) * z), _MM_HINT_T0);
+                _mm_prefetch(reinterpret_cast<const char*>(reversePtr + (col + 2) * z), _MM_HINT_T0);
+            }
+
             __m256i subScore = _mm256_load_si256((__m256i*)(subPtr + col * z));
             __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr + col * z));
             __m256i forwardScoreNext = _mm256_load_si256((__m256i*)(frontPtr + (col + 1) * z));
@@ -489,6 +540,13 @@ AlnScoreType AlignmentAVX::addSubsAndInsertAVX(size_t frontRow, size_t revRow,
         // _readsSize[readId] -> _readsSize[readId + batchSize - 1]
         for (size_t col = shortestCol; col < y - 1; ++col)
         {
+            // Prefetch the next cache line for the following pointers
+            if (col + 2 < y - 1) {  // Prefetch two iterations ahead
+                _mm_prefetch(reinterpret_cast<const char*>(subPtr + (col + 2) * z), _MM_HINT_T0);
+                _mm_prefetch(reinterpret_cast<const char*>(frontPtr + (col + 2) * z), _MM_HINT_T0);
+                _mm_prefetch(reinterpret_cast<const char*>(reversePtr + (col + 2) * z), _MM_HINT_T0);
+            }
+
             __m256i subScore = _mm256_load_si256((__m256i*)(subPtr + col * z));
             __m256i forwardScoreCurrent = _mm256_load_si256((__m256i*)(frontPtr + col * z));
             __m256i forwardScoreNext = _mm256_load_si256((__m256i*)(frontPtr + (col + 1) * z));
