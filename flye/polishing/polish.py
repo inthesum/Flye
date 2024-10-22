@@ -1,6 +1,6 @@
-# (c) 2016 by Authors
-# This file is a part of ABruijn program.
-# Released under the BSD license (see LICENSE file)
+#(c) 2016 by Authors
+#This file is a part of ABruijn program.
+#Released under the BSD license (see LICENSE file)
 
 """
 Runs polishing binary in parallel and concatentes output
@@ -15,7 +15,6 @@ import time
 from collections import defaultdict
 import gzip
 from datetime import timedelta
-import threading
 
 from flye.polishing.alignment import (make_alignment, get_contigs_info,
                                       merge_chunks, split_into_chunks)
@@ -26,6 +25,7 @@ from flye.utils.utils import which
 import flye.config.py_cfg as cfg
 from flye.six import iteritems
 from flye.six.moves import range
+
 
 POLISH_BIN = "flye-modules"
 
@@ -96,7 +96,8 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         elapsed_time_seconds = end_time - start_time
         total_time += elapsed_time_seconds
         elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
-        profile_data["minimap_" + str(i)] = [elapsed_time_seconds, elapsed_time]
+        profile_data["minimap_"+str(i)] = [elapsed_time_seconds, elapsed_time]
+
 
         #####
         start_time = time.time()
@@ -114,7 +115,8 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         elapsed_time_seconds = end_time - start_time
         total_time += elapsed_time_seconds
         elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
-        profile_data["bubbles_" + str(i)] = [elapsed_time_seconds, elapsed_time]
+        profile_data["bubbles_"+str(i)] = [elapsed_time_seconds, elapsed_time]
+
 
         logger.info("Alignment error rate: %f", mean_aln_error)
         consensus_out = os.path.join(work_dir, "consensus_{0}.fasta".format(i + 1))
@@ -140,9 +142,10 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         elapsed_time_seconds = end_time - start_time
         total_time += elapsed_time_seconds
         elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
-        profile_data["correct_" + str(i)] = [elapsed_time_seconds, elapsed_time]
+        profile_data["correct_"+str(i)] = [elapsed_time_seconds, elapsed_time]
 
-        # Cleanup
+
+        #Cleanup
         os.remove(bubbles_file)
         for j in range(num_threads):
             filename = bubbles_file
@@ -167,8 +170,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
         for function_name, function_time in profile_data.items():
             elapsed_time_seconds = function_time[0]
             elapsed_time = function_time[1]
-            file.write(
-                f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
+            file.write(f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
         file.write("\n")
 
     with open(stats_file, "w") as f:
@@ -177,7 +179,7 @@ def polish(contig_seqs, read_seqs, work_dir, num_iters, num_threads, read_platfo
             if ctg_id not in coverage_stats:
                 coverage_stats[ctg_id] = 0
             f.write("{0}\t{1}\t{2}\n".format(ctg_id,
-                                             contig_lengths[ctg_id], coverage_stats[ctg_id]))
+                    contig_lengths[ctg_id], coverage_stats[ctg_id]))
 
     with gzip.open(bed_coverage, "wt") as f:
         f.write("#seq_name\tstart\tend\tcoverage\n")
@@ -222,6 +224,7 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
     alignment_file = os.path.join(work_dir, "edges_aln.bam")
     polished_dict = fp.read_sequence_dict(polished_contigs)
 
+
     start_time = time.time()
 
     make_alignment(polished_contigs, [edges_file], num_threads,
@@ -233,6 +236,7 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
     elapsed_time = format_timedelta(timedelta(seconds=elapsed_time_seconds))
     profile_data["minimap"] = [elapsed_time_seconds, elapsed_time]
 
+
     start_time = time.time()
 
     aln_reader = SynchronizedSamReader(alignment_file,
@@ -240,12 +244,12 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
                                        cfg.vals["max_read_coverage"])
     aln_by_edge = defaultdict(list)
 
-    # getting one best alignment for each contig
-    # for ctg in polished_dict:
+    #getting one best alignment for each contig
+    #for ctg in polished_dict:
     #    ctg_aln = aln_reader.get_alignments(ctg)
     for aln in aln_reader.get_all_alignments():
         aln_by_edge[aln.qry_id].append(aln)
-    # logger.debug("Bam parsing done")
+    #logger.debug("Bam parsing done")
 
     MIN_CONTAINMENT = 0.9
     updated_seqs = 0
@@ -261,11 +265,11 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
                     map_start = min(map_start, aln.trg_start)
                     map_end = max(map_end, aln.trg_end)
 
-            new_seq = polished_dict[main_aln.trg_id][map_start: map_end]
+            new_seq = polished_dict[main_aln.trg_id][map_start : map_end]
             if main_aln.qry_sign == "-":
                 new_seq = fp.reverse_complement(new_seq)
 
-            # print(edge, main_aln.qry_len, len(new_seq), main_aln.qry_start, main_aln.qry_end)
+            #print(edge, main_aln.qry_len, len(new_seq), main_aln.qry_start, main_aln.qry_end)
             if len(new_seq) / aln.qry_len > MIN_CONTAINMENT:
                 edges_dict[edge] = new_seq
                 updated_seqs += 1
@@ -281,27 +285,26 @@ def generate_polished_edges(edges_file, gfa_file, polished_contigs, work_dir,
         for function_name, function_time in profile_data.items():
             elapsed_time_seconds = function_time[0]
             elapsed_time = function_time[1]
-            file.write(
-                f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
+            file.write(f"{function_name.ljust(10)}: {elapsed_time} ({(elapsed_time_seconds / total_time) * 100:.2f}%)\n")
         file.write("\n")
 
-    # writes fasta file with polished egdes
-    # edges_polished = os.path.join(work_dir, "polished_edges.fasta")
-    # fp.write_fasta_dict(edges_dict, edges_polished)
+    #writes fasta file with polished egdes
+    #edges_polished = os.path.join(work_dir, "polished_edges.fasta")
+    #fp.write_fasta_dict(edges_dict, edges_polished)
 
-    # writes gfa file with polished edges
+    #writes gfa file with polished edges
     with open(os.path.join(work_dir, "polished_edges.gfa"), "w") as gfa_polished, \
-            open(gfa_file, "r") as gfa_in:
+         open(gfa_file, "r") as gfa_in:
         for line in gfa_in:
             if line.startswith("S"):
                 seq_id = line.split()[1]
                 coverage_tag = line.split()[3]
                 seq_num = seq_id.split("_")[1]
                 if seq_num in edges_new_coverage:
-                    # logger.info("from {0} to {1}".format(coverage_tag, edges_new_coverage[seq_num]))
+                    #logger.info("from {0} to {1}".format(coverage_tag, edges_new_coverage[seq_num]))
                     coverage_tag = "dp:i:{0}".format(edges_new_coverage[seq_num])
                 gfa_polished.write("S\t{0}\t{1}\t{2}\n"
-                                   .format(seq_id, edges_dict[seq_id], coverage_tag))
+                                    .format(seq_id, edges_dict[seq_id], coverage_tag))
             else:
                 gfa_polished.write(line)
 
@@ -361,7 +364,7 @@ def filter_by_coverage(args, stats_in, contigs_in, stats_out, contigs_out):
         f.write("#seq_name\tlength\tcoverage\n")
         for ctg_id in good_fasta:
             f.write("{0}\t{1}\t{2}\n".format(ctg_id,
-                                             ctg_stats[ctg_id][0], ctg_stats[ctg_id][1]))
+                    ctg_stats[ctg_id][0], ctg_stats[ctg_id][1]))
 
 
 def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
@@ -391,98 +394,43 @@ def _run_polish_bin(bubbles_in, subs_matrix, hopo_matrix,
         raise PolishException(str(e))
 
 
-# def _compose_sequence(consensus_file, num_threads):
-#     """
-#     Concatenates bubbles consensuses into genome
-#     """
-#     consensuses = defaultdict(list)
-#     coverage = defaultdict(list)
-#     for i in range(num_threads):
-#         filename = consensus_file
-#         base, ext = filename.rsplit('.', 1)
-#         filename = f"{base}_{i}.{ext}"
-#         with open(filename, "r") as f:
-#             header = True
-#             for line in f:
-#                 if header:
-#                     tokens = line.strip().split(" ")
-#                     if len(tokens) != 4:
-#                         raise Exception("Bubble format error")
-#
-#                     ctg_id = tokens[0][1:]
-#                     ctg_pos = int(tokens[1])
-#                     coverage = int(tokens[2])
-#                     ctg_sub_pos = int(tokens[3])
-#                 else:
-#                     consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
-#                 header = not header
-#
-#     polished_fasta = {}
-#     polished_stats = {}
-#     polished_coverages = {}
-#     for ctg_id, seqs in iteritems(consensuses):
-#         seqs.sort(key=lambda p: (p[0], p[1]))
-#         sorted_seqs = [p[3] for p in seqs]
-#         bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
-#         concat_seq = "".join(sorted_seqs)
-#         #mean_coverage = sum(coverage[ctg_id]) / len(coverage[ctg_id])
-#         polished_fasta[ctg_id] = concat_seq
-#         polished_stats[ctg_id] = len(concat_seq)
-#         polished_coverages[ctg_id] = bubble_coverages
-#
-#     return polished_fasta, polished_stats, polished_coverages
-
-
-def _read_consensus_file(filename, consensuses, thread_id):
-    """
-    Reads a consensus file and populates the consensuses dictionary with the data.
-    """
-    with open(filename, "r") as f:
-        header = True
-        for line in f:
-            if header:
-                tokens = line.strip().split(" ")
-                if len(tokens) != 4:
-                    raise Exception("Bubble format error")
-
-                ctg_id = tokens[0][1:]
-                ctg_pos = int(tokens[1])
-                cov = int(tokens[2])  # Renamed to avoid conflict with 'coverage' dict
-                ctg_sub_pos = int(tokens[3])
-            else:
-                consensuses[thread_id][ctg_id].append((ctg_pos, ctg_sub_pos, cov, line.strip()))
-            header = not header
-
-
 def _compose_sequence(consensus_file, num_threads):
     """
     Concatenates bubbles consensuses into genome
     """
-    consensuses = [defaultdict(list) for _ in range(num_threads)]
-
-    threads = []
+    consensuses = defaultdict(list)
+    coverage = defaultdict(list)
     for i in range(num_threads):
         filename = consensus_file
         base, ext = filename.rsplit('.', 1)
         filename = f"{base}_{i}.{ext}"
-        thread = threading.Thread(target=_read_consensus_file, args=(filename, consensuses, i))
-        thread.start()
-        threads.append(thread)
+        with open(filename, "r") as f:
+            header = True
+            for line in f:
+                if header:
+                    tokens = line.strip().split(" ")
+                    if len(tokens) != 4:
+                        raise Exception("Bubble format error")
 
-    for thread in threads:
-        thread.join()
+                    ctg_id = tokens[0][1:]
+                    ctg_pos = int(tokens[1])
+                    coverage = int(tokens[2])
+                    ctg_sub_pos = int(tokens[3])
+                else:
+                    consensuses[ctg_id].append((ctg_pos, ctg_sub_pos, coverage, line.strip()))
+                header = not header
 
     polished_fasta = {}
     polished_stats = {}
     polished_coverages = {}
-    for cons in consensuses:
-        for ctg_id, seqs in cons.items():
-            seqs.sort(key=lambda p: (p[0], p[1]))
-            sorted_seqs = [p[3] for p in seqs]
-            bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
-            concat_seq = "".join(sorted_seqs)
-            polished_fasta[ctg_id] = concat_seq
-            polished_stats[ctg_id] = len(concat_seq)
-            polished_coverages[ctg_id] = bubble_coverages
+    for ctg_id, seqs in iteritems(consensuses):
+        seqs.sort(key=lambda p: (p[0], p[1]))
+        sorted_seqs = [p[3] for p in seqs]
+        bubble_coverages = [(len(p[3]), p[2]) for p in seqs]
+        concat_seq = "".join(sorted_seqs)
+        #mean_coverage = sum(coverage[ctg_id]) / len(coverage[ctg_id])
+        polished_fasta[ctg_id] = concat_seq
+        polished_stats[ctg_id] = len(concat_seq)
+        polished_coverages[ctg_id] = bubble_coverages
 
     return polished_fasta, polished_stats, polished_coverages
